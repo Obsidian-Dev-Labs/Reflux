@@ -219,7 +219,7 @@
       [
         {
           transport: "/epoxy/index.mjs",
-          wisp: "wss://wisp.mercurywork.shop/",
+          wisp: "wss://gointospace.app/wisp/",
           controlPort: control.port1,
         },
       ],
@@ -232,5 +232,46 @@
 
     window.BMClient = client;
     window.BMConnection = connection;
+
+    function injectDiscordHeadMiddleware() {
+      return {
+        onResponse: async ({ request, response }, next) => {
+          if (
+            request.remote.hostname === "discord.com" &&
+            response.headers["content-type"]?.includes("text/html")
+          ) {
+            let originalHtml = response.body;
+
+            // Ensure response.body is a string
+            if (typeof originalHtml !== "string") {
+              originalHtml = (await response.body.text?.()) ?? "";
+            }
+
+            const injectedScript = `
+<link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css">
+<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\/script>`;
+
+            const modifiedHtml = originalHtml.replace(
+              "</head>",
+              injectedScript + "</head>"
+            );
+
+            response.body = modifiedHtml;
+            response.headers["content-length"] = String(modifiedHtml.length);
+            response.headers["content-type"] = "text/html";
+
+            console.log("[middleware] Injected script into Discord head");
+          }
+
+          await next();
+        },
+      };
+    }
+
+    control.port2.postMessage({
+      type: "addMiddleware",
+      id: "inject-discord-head",
+      fn: `(${injectDiscordHeadMiddleware.toString()})()`,
+    });
   })();
 </script>
