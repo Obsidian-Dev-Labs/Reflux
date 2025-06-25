@@ -1,0 +1,41 @@
+{
+  "name": "@obsidiandevlabs/reflux",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Reflux is a powerful, universal request/response middleware engine designed for any BareMux compatible web proxy. It enables seamless script injection, request/response rewriting, and full control over the transports — all from a single, extensible interface.",
+	"main": "./dist/index.mjs",
+  "scripts": {
+    "build": "node esbuild.bundle.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Obsidian-Dev-Labs/Reflux.git"
+  },
+  "author": "Obsidian Developer Labs",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Obsidian-Dev-Labs/Reflux/issues"
+  },
+  "homepage": "https://github.com/Obsidian-Dev-Labs/Reflux#readme",
+  "devDependencies": {
+    "@mercuryworkshop/bare-mux": "^2.1.7",
+    "esbuild": "^0.24.0",
+    "esbuild-plugin-d.ts": "^1.3.1",
+    "esbuild-plugin-umd-wrapper": "^3.0.0",
+    "tsc": "^2.0.4",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  },
+  "exports": {
+    ".": {
+      "browser": {
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js"
+      },
+      "node": {
+        "require": "./lib/index.cjs",
+        "import": "./lib/index.cjs"
+      }
+    }
+  }
+}
