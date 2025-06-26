@@ -235,43 +235,196 @@
 
     function injectDiscordHeadMiddleware() {
       return {
+        id: "inject-discord-head",
         onResponse: async ({ request, response }, next) => {
-          if (
-            request.remote.hostname === "discord.com" &&
-            response.headers["content-type"]?.includes("text/html")
-          ) {
-            let originalHtml = response.body;
+          try {
+            // Only proceed if this is a Discord response and it's HTML
+            if (
+              request.remote.hostname.includes("discord.com") &&
+              response.headers["content-type"]?.includes("text/html")
+            ) {
+              // Get body content as string
+              let originalHtml = response.body;
 
-            // Ensure response.body is a string
-            if (typeof originalHtml !== "string") {
-              originalHtml = (await response.body.text?.()) ?? "";
-            }
+              // If body is not a string (might be a stream or buffer)
+              if (typeof originalHtml !== "string") {
+                try {
+                  // Try to convert body to text
+                  originalHtml = await response.body.text();
+                } catch (err) {
+                  console.error(
+                    "[Discord middleware] Failed to read response body:",
+                    err
+                  );
+                  await next();
+                  return;
+                }
+              }
 
-            const injectedScript = `
+              // Only inject if we have content and it contains a head tag
+              if (originalHtml && originalHtml.includes("</head>")) {
+                const injectedScript = `
 <link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css">
 <script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\/script>`;
 
-            const modifiedHtml = originalHtml.replace(
-              "</head>",
-              injectedScript + "</head>"
-            );
+                const modifiedHtml = originalHtml.replace(
+                  "</head>",
+                  injectedScript + "</head>"
+                );
 
-            response.body = modifiedHtml;
-            response.headers["content-length"] = String(modifiedHtml.length);
-            response.headers["content-type"] = "text/html";
+                response.body = modifiedHtml;
+                response.headers["content-length"] = String(modifiedHtml.length);
 
-            console.log("[middleware] Injected script into Discord head");
+                console.log("[Discord middleware] Successfully injected script");
+              } else {
+                console.warn(
+                  "[Discord middleware] Response doesn't contain </head> tag"
+                );
+              }
+            }
+          } catch (error) {
+            console.error("[Discord middleware] Error:", error);
           }
 
+          // Always proceed to next middleware
           await next();
         },
       };
     }
 
-    control.port2.postMessage({
+    // First, register the fixed middleware
+    /*control.port2.postMessage({
       type: "addMiddleware",
       id: "inject-discord-head",
       fn: `(${injectDiscordHeadMiddleware.toString()})()`,
+    });*/
+
+    // Then test with these headers
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+      "Accept":
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    };
+
+    // Test the fetch
+    /*const discordRes = await window.BMClient.fetch("https://discord.com", {
+      headers,
+    });
+    console.log("Discord response status:", discordRes.status);
+    const text = await discordRes.text();
+    console.log("Discord response length:", text.length);
+    console.log(
+      "Discord response:",
+      text
+    );
+    if (text.includes("</head>")) {
+      console.log("Discord response contains </head> tag");
+    } else {
+      console.warn("Discord response does not contain </head> tag");
+    }
+
+    if (text.includes("Vendicated/Vencord")) {
+      console.log("Vencord script successfully injected");
+    } else {
+      console.warn("Vencord script not found in response");
+    }*/
+
+    function createContentInjectionMiddleware(config = {}) {
+      return {
+        id: config.id || "content-injection-middleware",
+        onResponse: async ({ request, response }, next) => {
+          try {
+            // Check if we should process this request based on hostname pattern
+            const hostnamePattern = config.hostnamePattern || /.*/;
+            if (!hostnamePattern.test(request.remote.hostname)) {
+              await next();
+              return;
+            }
+
+            // Check content type - typically we only want to modify HTML
+            const contentType = response.headers["content-type"] || "";
+            if (!contentType.includes("text/html") && !config.forceProcess) {
+              await next();
+              return;
+            }
+
+            // Get response body as string
+            let content = response.body;
+            if (typeof content !== "string") {
+              try {
+                content = await response.body.text();
+              } catch (err) {
+                console.error("[Injection Middleware] Failed to read response body:", err);
+                await next();
+                return;
+              }
+            }
+
+            // Skip if no content
+            if (!content) {
+              console.warn("[Injection Middleware] Empty response body");
+              await next();
+              return;
+            }
+
+            // Process the content based on injection mode
+            let modifiedContent = content;
+            
+            if (config.injectionMode === "replace" && config.targetPattern) {
+              // Replace mode - completely replace matched content
+              const pattern = new RegExp(config.targetPattern, config.patternFlags || "g");
+              modifiedContent = content.replace(pattern, config.injectionContent);
+            } 
+            else if (config.injectionMode === "before" && config.targetPattern) {
+              // Before mode - insert before matched content
+              const pattern = new RegExp(config.targetPattern, config.patternFlags || "");
+              modifiedContent = content.replace(pattern, `${config.injectionContent}$&`);
+            }
+            else if (config.injectionMode === "after" && config.targetPattern) {
+              // After mode - insert after matched content
+              const pattern = new RegExp(config.targetPattern, config.patternFlags || "");
+              modifiedContent = content.replace(pattern, `$&${config.injectionContent}`);
+            }
+            else if (config.injectionMode === "custom" && typeof config.customProcessor === "function") {
+              // Custom mode - use provided function to transform content
+              modifiedContent = config.customProcessor(content, request);
+            }
+            else {
+              // Default - append to end of body if no other mode specified
+              modifiedContent = content + config.injectionContent;
+            }
+
+            // Update the response
+            response.body = modifiedContent;
+            response.headers["content-length"] = String(modifiedContent.length);
+
+            console.log(`[${config.id || "Injection Middleware"}] Content injection successful`);
+          } catch (error) {
+            console.error(`[${config.id || "Injection Middleware"}] Error:`, error);
+          }
+
+          // Always proceed to next middleware
+          await next();
+        }
+      };
+    }
+
+    // Register Discord Vencord injection middleware
+    control.port2.postMessage({
+      type: "addMiddleware",
+      id: "discord-vencord-injector",
+      fn: `(${createContentInjectionMiddleware.toString()})({
+        id: "discord-vencord-injector",
+        hostnamePattern: /discord\.com/,
+        injectionMode: "before", 
+        targetPattern: "</head>",
+        injectionContent: \`
+<link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css">
+<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\\/script>
+\`
+      })`,
     });
   })();
-</script>
+  </script>
