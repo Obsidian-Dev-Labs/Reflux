@@ -202,10 +202,13 @@
     });
 
     const control = new MessageChannel();
+    console.log("Created control channel:", control);
 
     const connection = new window.BareMux.BareMuxConnection(
       "/baremux/worker.js"
     );
+    
+    console.log("Setting transport with control port...");
     await connection.setTransport(
       "/reflux/index.mjs",
       [
@@ -217,6 +220,7 @@
       ],
       [control.port1]
     );
+    console.log("Transport set successfully");
 
     const client = new window.BareMux.BareClient();
     const response = await client.fetch("https://example.com");
@@ -257,8 +261,11 @@
 
       try {
         console.log("Initializing RefluxAPI with constructor:", RefluxAPIClass.name);
+        console.log("Control port available:", !!control.port2);
         
         const api = new RefluxAPIClass(control.port2);
+        console.log("RefluxAPI instance created:", api);
+        console.log("API methods available:", Object.getOwnPropertyNames(Object.getPrototypeOf(api)));
 
         console.log("Testing the new Plugin System...");
         
@@ -273,10 +280,11 @@
           sites: ['*']
         };
         
+        console.log("Adding example plugin...");
         api.addPlugin(examplePlugin).then(() => {
-          console.log("Example logger plugin added successfully!");
+          console.log("✅ Example logger plugin added successfully!");
         }).catch(error => {
-          console.error("Failed to add example plugin:", error);
+          console.error("❌ Failed to add example plugin:", error);
         });
 
         const exampleComPlugin = {
@@ -341,25 +349,8 @@
         const githubPlugin = {
           function: `
             if (body.includes('</head>')) {
-              const customCSS = \`
-                <style>
-                  .reflux-banner {
-                    background: linear-gradient(90deg, #6366f1, #8b5cf6);
-                    color: white;
-                    text-align: center;
-                    padding: 10px;
-                    font-weight: bold;
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    z-index: 9999;
-                  }
-                  body { margin-top: 40px !important; }
-                </style>
-              \`;
-              
-              const banner = \`<div class="reflux-banner">🚀 Enhanced by Reflux Plugin System</div>\`;
+              const customCSS = '<style>.reflux-banner {background: linear-gradient(90deg, #6366f1, #8b5cf6);color: white;text-align: center;padding: 10px;font-weight: bold;position: fixed;top: 0;left: 0;right: 0;z-index: 9999;}body { margin-top: 40px !important; }</style>';
+              const banner = '<div class="reflux-banner">🚀 Enhanced by Reflux Plugin System</div>';
               
               let modifiedBody = body.replace('</head>', customCSS + '</head>');
               
@@ -377,47 +368,17 @@
           sites: ['github.com']
         };
 
-        api.addPlugin(googlePlugin).then(() => {
-          console.log("Google modifier plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add Google plugin:", error);
-        });
-
-        const vencordPlugin = {
-          function: `
-            if (body.includes('</head>')) {
-              const customCSS = \`
-                <link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css" />
-              \`;
-
-              const banner = \`<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\/script>\`;
-
-              let modifiedBody = body.replace('</head>', customCSS + '</head>');
-              
-              const bodyTagMatch = modifiedBody.match(/<body[^>]*>/);
-              if (bodyTagMatch) {
-                const bodyTag = bodyTagMatch[0];
-                modifiedBody = modifiedBody.replace(bodyTag, bodyTag + banner);
-              }
-              
-              return modifiedBody;
-            }
-            return body;
-          `,
-          name: 'com.example.vencord-enhancer',
-          sites: ['discord.com']
-        };
-        
         api.addPlugin(githubPlugin).then(() => {
           console.log("GitHub enhancer plugin added successfully!");
         }).catch(error => {
           console.error("Failed to add GitHub plugin:", error);
         });
 
-        api.addPlugin(vencordPlugin).then(() => {
-          console.log("Vencord enhancer plugin added successfully!");
+        
+        api.addPlugin(githubPlugin).then(() => {
+          console.log("GitHub enhancer plugin added successfully!");
         }).catch(error => {
-          console.error("Failed to add Vencord plugin:", error);
+          console.error("Failed to add GitHub plugin:", error);
         });
 
 
@@ -495,6 +456,258 @@
           console.log("Debug plugin added successfully!");
         }).catch(error => {
           console.error("Failed to add debug plugin:", error);
+        });
+
+        // Example plugin that injects code based on constants
+        const configBasedPlugin = {
+          function: `
+            // Configuration constants
+            const PLUGIN_CONFIG = {
+              injectType: 'css', // 'css', 'js', 'html', or 'mixed'
+              cssCode: 'body { filter: sepia(0.3) !important; } h1 { color: #ff6b6b !important; }',
+              jsCode: 'console.log("Custom JS injected!"); window.customFeature = true;',
+              htmlCode: '<div id="custom-banner" style="background: #4CAF50; color: white; padding: 10px; text-align: center;">Custom HTML Banner</div>',
+              targetSites: ['*'], // Sites where this should work
+              position: 'head' // 'head', 'body-start', 'body-end'
+            };
+            
+            // Server-side injection based on config
+            if (body.includes('</head>') || body.includes('</body>')) {
+              let modifiedBody = body;
+              
+              if (PLUGIN_CONFIG.injectType === 'css' || PLUGIN_CONFIG.injectType === 'mixed') {
+                const cssTag = '<style>' + PLUGIN_CONFIG.cssCode + '</style>';
+                modifiedBody = modifiedBody.replace('</head>', cssTag + '</head>');
+              }
+              
+              if (PLUGIN_CONFIG.injectType === 'js' || PLUGIN_CONFIG.injectType === 'mixed') {
+                const jsTag = '<script>' + PLUGIN_CONFIG.jsCode + '</script>';
+                if (PLUGIN_CONFIG.position === 'head') {
+                  modifiedBody = modifiedBody.replace('</head>', jsTag + '</head>');
+                } else if (PLUGIN_CONFIG.position === 'body-end') {
+                  modifiedBody = modifiedBody.replace('</body>', jsTag + '</body>');
+                }
+              }
+              
+              if (PLUGIN_CONFIG.injectType === 'html' || PLUGIN_CONFIG.injectType === 'mixed') {
+                if (PLUGIN_CONFIG.position === 'body-start') {
+                  const bodyMatch = modifiedBody.match(/<body[^>]*>/);
+                  if (bodyMatch) {
+                    modifiedBody = modifiedBody.replace(bodyMatch[0], bodyMatch[0] + PLUGIN_CONFIG.htmlCode);
+                  }
+                } else if (PLUGIN_CONFIG.position === 'body-end') {
+                  modifiedBody = modifiedBody.replace('</body>', PLUGIN_CONFIG.htmlCode + '</body>');
+                }
+              }
+              
+              return modifiedBody;
+            }
+            
+            /* @browser */
+            // Browser-side configuration
+            const BROWSER_CONFIG = {
+              enableConsoleLog: true,
+              showNotification: true,
+              addCustomElements: true,
+              customMessage: 'Plugin loaded with custom config!'
+            };
+            
+            if (BROWSER_CONFIG.enableConsoleLog) {
+              console.log('🔧 Config-based plugin loaded on:', url);
+              console.log('🔧 Plugin config:', BROWSER_CONFIG);
+            }
+            
+            if (BROWSER_CONFIG.showNotification) {
+              const notification = document.createElement('div');
+              notification.innerHTML = '⚙️ ' + BROWSER_CONFIG.customMessage;
+              notification.style.cssText = 'position: fixed; top: 50px; right: 10px; background: #2196F3; color: white; padding: 10px; border-radius: 5px; z-index: 999999; font-size: 14px; cursor: pointer;';
+              
+              // Auto-hide after 5 seconds
+              notification.onclick = () => notification.remove();
+              setTimeout(() => notification.remove(), 5000);
+              
+              function showNotification() {
+                document.body.appendChild(notification);
+              }
+              
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', showNotification);
+              } else {
+                showNotification();
+              }
+            }
+            
+            if (BROWSER_CONFIG.addCustomElements) {
+              function addCustomElements() {
+                // Add a floating action button
+                const fab = document.createElement('div');
+                fab.innerHTML = '🚀';
+                fab.style.cssText = 'position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(45deg, #FF6B6B, #4ECDC4); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999999; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+                
+                fab.onclick = () => {
+                  alert('Custom FAB clicked! Plugin is working.');
+                };
+                
+                document.body.appendChild(fab);
+                console.log('🔧 Custom floating action button added');
+              }
+              
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', addCustomElements);
+              } else {
+                addCustomElements();
+              }
+            }
+            /* @/browser */
+            
+            return body;
+          `,
+          name: 'com.example.config-based-injector',
+          sites: ['*']
+        };
+        
+        api.addPlugin(configBasedPlugin).then(() => {
+          console.log("✅ Config-based plugin added successfully!");
+        }).catch(error => {
+          console.error("❌ Failed to add config-based plugin:", error);
+        });
+
+        // Example of a simpler const-based plugin for specific use case
+        const simpleConstPlugin = {
+          function: `
+            // Simple configuration
+            const INJECT_DARK_MODE = true;
+            const INJECT_CUSTOM_FONT = false;
+            const SHOW_PAGE_INFO = true;
+            
+            if (body.includes('</head>')) {
+              let injectedCSS = '';
+              
+              if (INJECT_DARK_MODE) {
+                injectedCSS += 'body { background: #1a1a1a !important; color: #e0e0e0 !important; }';
+                injectedCSS += 'a { color: #4CAF50 !important; }';
+              }
+              
+              if (INJECT_CUSTOM_FONT) {
+                injectedCSS += 'body { font-family: "Comic Sans MS", cursive !important; }';
+              }
+              
+              let injectedJS = '';
+              if (SHOW_PAGE_INFO) {
+                injectedJS = 'console.log("Page loaded:", window.location.href, "Title:", document.title);';
+              }
+              
+              if (injectedCSS) {
+                body = body.replace('</head>', '<style>' + injectedCSS + '</style></head>');
+              }
+              
+              if (injectedJS) {
+                body = body.replace('</head>', '<script>' + injectedJS + '</script></head>');
+              }
+            }
+            
+            return body;
+          `,
+          name: 'com.example.simple-const-plugin',
+          sites: ['example.com', 'httpbin.org']
+        };
+        
+        api.addPlugin(simpleConstPlugin).then(() => {
+          console.log("✅ Simple const plugin added successfully!");
+        }).catch(error => {
+          console.error("❌ Failed to add simple const plugin:", error);
+        });
+
+        // Your navigation tracking plugin implemented correctly
+        const injectable = `
+(function () {
+    if ((typeof window !== "object" || self.constructor !== Window) || window.parent === window) {
+        return;
+    }
+
+    const notifyParentOfNavigation = (url) => {
+        window.parent.postMessage({
+            type: 'navigation',
+            url: url,
+            title: document.title || 'Loading...',
+        }, window.location.origin);
+    };
+
+    if (window.navigation) {
+        console.log('Using Navigation API.');
+        window.navigation.addEventListener('navigate', (event) => {
+            if (event.destination) {
+                notifyParentOfNavigation(event.destination.url);
+            }
+        });
+    }
+    else {
+        console.log('Using fallback for older browser.');
+        const { pushState, replaceState } = history;
+
+        history.pushState = function (state, title, url, ...rest) {
+            if (url) {
+                notifyParentOfNavigation(new URL(url, window.location.href).href);
+            }
+            return pushState.apply(history, [state, title, url, ...rest]);
+        };
+
+        history.replaceState = function (state, title, url, ...rest) {
+            if (url) {
+                notifyParentOfNavigation(new URL(url, window.location.href).href);
+            }
+            return replaceState.apply(history, [state, title, url, ...rest]);
+        };
+
+        window.addEventListener('popstate', () => {
+            notifyParentOfNavigation(window.location.href);
+        });
+
+        window.addEventListener('hashchange', (event) => {
+            notifyParentOfNavigation(event.newURL);
+        });
+
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('a');
+            if (link && link.href && link.getAttribute('href') && !link.href.startsWith('javascript:')) {
+                if (link.target !== '_blank') {
+                    notifyParentOfNavigation(link.href);
+                }
+            }
+        }, true);
+
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('form');
+            if (form && form.action) {
+                if (form.target !== '_blank') {
+                    notifyParentOfNavigation(form.action);
+                }
+            }
+        }, true);
+
+        notifyParentOfNavigation(window.location.href);
+    }
+})();`;
+
+        function buildPlugins() {
+            return {
+                function: `
+                    /* @browser */
+                    ${injectable}
+                    /* @/browser */
+                `,
+                name: 'alora.base.functionality',
+                sites: ['*']
+            };
+        }
+
+        // Add the navigation tracking plugin
+        const navigationPlugin = buildPlugins();
+        
+        api.addPlugin(navigationPlugin).then(() => {
+          console.log("✅ Navigation tracking plugin added successfully!");
+        }).catch(error => {
+          console.error("❌ Failed to add navigation plugin:", error);
         });
 
         window.RefluxAPIInstance = api;

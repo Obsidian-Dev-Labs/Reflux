@@ -1,5 +1,9 @@
 import type { BareHeaders, TransferrableResponse as BareTransferrableResponse, BareTransport } from "@mercuryworkshop/bare-mux";
 
+// Path to the built Reflux transport in the dist folder
+export declare const refluxPath: string;
+
+
 export interface MiddlewareFunction {
   id: string;
   enabled?: boolean | (() => boolean);
