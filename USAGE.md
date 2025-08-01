@@ -1,364 +1,70 @@
-# Reflux Middleware Usage Guide
+# Reflux Plugin System Usage Guide
 
-This guide explains how to use the updated Reflux middleware system that now supports request and response modification.
-
-## Overview
-
-The Reflux middleware system allows you to intercept and modify HTTP requests and responses as they pass through the transport layer. The updated system provides full control over both requests and responses, enabling powerful customization capabilities.
+This guide explains how to use the Reflux Plugin System for dynamic web content modification.
 
 ## Basic Setup
 
-### 1. Initialize the Transport
-
-```javascript
-import RefluxTransport from './src/index.js';
-
-const transport = new RefluxTransport({
-  transport: '/path/to/your/transport.js',
-  middleware: [], // Your middleware array
-  controlPort: control.port1 // Optional: for dynamic middleware registration
-});
-
-await transport.init();
+### 1. HTML Setup
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="/baremux/index.js"></script>
+    <script src="/reflux/api.js"></script>
+</head>
+<body>
+    <script>
+        (async () => {
+            const control = new MessageChannel();
+            
+            const connection = new window.BareMux.BareMuxConnection("/baremux/worker.js");
+            await connection.setTransport(
+                "/reflux/index.mjs",
+                [{
+                    transport: "/epoxy/index.mjs",
+                    wisp: "wss://gointospace.app/wisp/",
+                    controlPort: control.port1,
+                }],
+                [control.port1]
+            );
+            
+            const api = new window.RefluxAPI(control.port2);
+            
+            // Now you can use the plugin API!
+            await api.addPlugin({
+              function: `
+                /* @browser */
+                console.log('Plugin loaded on:', url);
+                /* @/browser */
+              `,
+              name: 'com.example.test',
+              sites: ['*']
+            });
+        })();
+    </script>
+</body>
+</html>
 ```
 
-### 2. Create Middleware
-
-Middleware are JavaScript objects that implement one or more of the following methods:
-
-- `onRequest`: Intercepts and modifies outgoing requests
-- `onResponse`: Intercepts and modifies incoming responses
-- `modifyWebSocketMessage`: Modifies WebSocket messages (unchanged from previous version)
-
-## Middleware Structure
-
-```typescript
-type MiddlewareFunction = {
-  id?: string;                                    // Unique identifier
-  enabled?: boolean | (() => boolean);           // Enable/disable condition
-  onRequest?: (req: RequestContext, next: (modifiedReq?: Partial<RequestContext>) => Promise<RequestContext>) => Promise<RequestContext | void>;
-  onResponse?: (ctx: ResponseContext, next: (modifiedResp?: Partial<TransferrableResponse>) => Promise<TransferrableResponse>) => Promise<TransferrableResponse | void>;
-  modifyWebSocketMessage?: (data: string | Blob | ArrayBuffer, direction: "send" | "receive") => Promise<string | Blob | ArrayBuffer> | string | Blob | ArrayBuffer;
-};
-```
-
-## Request Modification
-
-### Basic Request Modifier
-
+### 2. ES Module Setup
 ```javascript
-const requestModifier = {
-  id: "request-modifier",
-  onRequest: async (req, next) => {
-    console.log("Original request:", req);
-    
-    // Modify the request
-    const modifiedReq = {
-      headers: { 
-        ...req.headers, 
-        "X-Custom-Header": "modified-by-middleware",
-        "User-Agent": "Reflux-Middleware/1.0"
-      },
-      method: "GET" // Force GET method
-    };
-    
-    // Pass modifications to next middleware
-    const finalReq = await next(modifiedReq);
-    console.log("Final request:", finalReq);
-    return finalReq;
-  }
-};
-```
+import { RefluxAPI } from '/reflux/api.mjs';
 
-### Conditional Request Modification
-
-```javascript
-const conditionalRequestModifier = {
-  id: "conditional-request-modifier",
-  onRequest: async (req, next) => {
-    // Only modify requests to specific domains
-    if (req.remote.hostname.includes("example.com")) {
-      const modifiedReq = {
-        headers: { ...req.headers, "X-Targeted-Modification": "true" }
-      };
-      return await next(modifiedReq);
-    }
-    
-    // For other domains, just pass through
-    return await next();
-  }
-};
-```
-
-## Response Modification
-
-### Basic Response Modifier
-
-```javascript
-const responseModifier = {
-  id: "response-modifier",
-  onResponse: async (ctx, next) => {
-    // Get the response from next middleware
-    const response = await next();
-    
-    // Modify the response
-    const modifiedResponse = {
-      ...response,
-      headers: { 
-        ...response.headers, 
-        "X-Response-Modified": "true",
-        "X-Middleware-Version": "2.0"
-      }
-    };
-    
-    return modifiedResponse;
-  }
-};
-```
-
-### HTML Content Injection
-
-```javascript
-const contentInjector = {
-  id: "content-injector",
-  onResponse: async (ctx, next) => {
-    const response = await next();
-    
-    // Only process HTML responses
-    if (response.headers["content-type"]?.includes("text/html")) {
-      let body = response.body;
-      if (typeof body !== "string") {
-        body = await response.body.text();
-      }
-      
-      // Inject a script tag
-      const scriptInjection = 
-        '<script>' +
-        'console.log("Injected by Reflux Middleware!");' +
-        'document.body.style.border = "5px solid red";' +
-        '</script>';
-      
-      const modifiedBody = body.replace("</head>", scriptInjection + "</head>");
-      
-      return {
-        ...response,
-        body: modifiedBody,
-        headers: { 
-          ...response.headers, 
-          "content-length": String(modifiedBody.length),
-          "X-Content-Injected": "true"
-        }
-      };
-    }
-    
-    return response;
-  }
-};
-```
-
-## Conditional Middleware
-
-### Enable/Disable Based on Conditions
-
-```javascript
-const conditionalMiddleware = {
-  id: "conditional-middleware",
-  enabled: () => {
-    // Only enable for specific domains
-    return window.location.hostname === "localhost";
-  },
-  onRequest: async (req, next) => {
-    // Your middleware logic here
-    return await next();
-  }
-};
-```
-
-### Dynamic Enable/Disable
-
-```javascript
-const dynamicMiddleware = {
-  id: "dynamic-middleware",
-  enabled: false, // Start disabled
-  onRequest: async (req, next) => {
-    console.log("Dynamic middleware processing request");
-    return await next();
-  }
-};
-
-// Later, enable it dynamically
-dynamicMiddleware.enabled = true;
-```
-
-## Dynamic Middleware Registration
-
-### Using Control Port
-
-```javascript
-// Create a MessageChannel for control
 const control = new MessageChannel();
+const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
 
-// Initialize transport with control port
-const transport = new RefluxTransport({
-  transport: '/path/to/transport.js',
-  controlPort: control.port1
-});
+await connection.setTransport(
+    "/reflux/index.mjs",
+    [{
+        transport: "/epoxy/index.mjs",
+        wisp: "wss://gointospace.app/wisp/",
+        controlPort: control.port1,
+    }],
+    [control.port1]
+);
 
-// Register middleware dynamically
-control.port2.postMessage({
-  type: "addMiddleware",
-  id: "dynamic-middleware",
-  fn: `(${dynamicMiddleware.toString()})()`
-});
-
-// Enable/disable middleware
-control.port2.postMessage({
-  type: "setMiddlewareEnabled",
-  id: "dynamic-middleware",
-  enabled: true
-});
+const api = new RefluxAPI(control.port2);
 ```
-
-### Dynamic Middleware Function
-
-```javascript
-function createDynamicMiddleware(config) {
-  return {
-    id: config.id || "dynamic-middleware",
-    onRequest: async (req, next) => {
-      console.log(`Dynamic middleware ${config.id} processing request to:`, req.remote.hostname);
-      
-      if (config.modifyHeaders) {
-        const modifiedReq = {
-          headers: { ...req.headers, ...config.modifyHeaders }
-        };
-        return await next(modifiedReq);
-      }
-      
-      return await next();
-    }
-  };
-}
-
-// Register it
-control.port2.postMessage({
-  type: "addMiddleware",
-  id: "custom-dynamic",
-  fn: `(${createDynamicMiddleware.toString()})({ id: "custom", modifyHeaders: { "X-Dynamic": "true" } })`
-});
-```
-
-## Advanced Examples
-
-### Request/Response Chain
-
-```javascript
-const chainMiddleware = {
-  id: "chain-middleware",
-  onRequest: async (req, next) => {
-    console.log("Chain middleware - request phase");
-    
-    // Modify request
-    const modifiedReq = {
-      headers: { ...req.headers, "X-Chain-Request": "modified" }
-    };
-    
-    const finalReq = await next(modifiedReq);
-    console.log("Chain middleware - request phase complete");
-    return finalReq;
-  },
-  onResponse: async (ctx, next) => {
-    console.log("Chain middleware - response phase");
-    
-    const response = await next();
-    
-    // Modify response
-    const modifiedResponse = {
-      ...response,
-      headers: { ...response.headers, "X-Chain-Response": "modified" }
-    };
-    
-    console.log("Chain middleware - response phase complete");
-    return modifiedResponse;
-  }
-};
-```
-
-### Content Rewriting
-
-```javascript
-const contentRewriter = {
-  id: "content-rewriter",
-  onResponse: async (ctx, next) => {
-    const response = await next();
-    
-    if (response.headers["content-type"]?.includes("text/html")) {
-      let body = response.body;
-      if (typeof body !== "string") {
-        body = await response.body.text();
-      }
-      
-      // Replace all instances of a word
-      const modifiedBody = body.replace(/example\.com/g, "modified-example.com");
-      
-      return {
-        ...response,
-        body: modifiedBody,
-        headers: { 
-          ...response.headers, 
-          "content-length": String(modifiedBody.length)
-        }
-      };
-    }
-    
-    return response;
-  }
-};
-```
-
-## Best Practices
-
-1. **Always handle errors**: Wrap your middleware logic in try-catch blocks
-2. **Check content types**: Verify content types before modifying response bodies
-3. **Preserve headers**: Use spread operator to maintain existing headers
-4. **Update content-length**: When modifying response bodies, update the content-length header
-5. **Use meaningful IDs**: Give your middleware descriptive IDs for easier debugging
-6. **Test thoroughly**: Middleware can affect all requests, so test with various scenarios
-
-## Error Handling
-
-```javascript
-const safeMiddleware = {
-  id: "safe-middleware",
-  onRequest: async (req, next) => {
-    try {
-      // Your middleware logic
-      return await next();
-    } catch (error) {
-      console.error("Middleware error:", error);
-      // Fall back to original request
-      return await next();
-    }
-  },
-  onResponse: async (ctx, next) => {
-    try {
-      const response = await next();
-      // Your response modification logic
-      return response;
-    } catch (error) {
-      console.error("Response middleware error:", error);
-      // Return original response
-      return await next();
-    }
-  }
-};
-```
-
-## Integration with Existing Code
-
-The updated middleware system is backward compatible with existing middleware that don't use the new modification features. Existing middleware will continue to work as before, but now you have the option to use the new modification capabilities.
-
-For examples and a working demo, see `demo/public/middleware-examples.html`.
 
 # Reflux Plugin System
 
