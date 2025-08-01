@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import fastifyStatic from '@fastify/static';
 import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
-// @ts-ignore r58 is an idiot and didnt include fucking types
+// @ts-ignore
 import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
 import http from "node:http";
 import { refluxPath } from '../lib/index.cjs';

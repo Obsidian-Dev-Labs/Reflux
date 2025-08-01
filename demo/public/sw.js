@@ -3,12 +3,13 @@ if (navigator.userAgent.includes("Firefox")) {
 		value: true,
 		writable: false,
 	});
-} // firefox fix
+}
 
 importScripts(
-	"/scram/scramjet.shared.js",
-	"/scram/scramjet.worker.js"
+	"/scram/scramjet.all.js"
 );
+
+const { ScramjetServiceWorker } = $scramjetLoadWorker();
 
 const scramjet = new ScramjetServiceWorker();
 

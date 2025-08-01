@@ -1,20 +1,14 @@
-// import { dtsPlugin } from "esbuild-plugin-d.ts";
-/**
- * THIS BUILD SCRIPT IS COPID FROM EPOXY, I DO NOT CLAIM CREDIT FOR IT
- */
-
 import { build } from "esbuild";
 import path from 'node:path'
 import fs, { readFileSync } from 'node:fs'
 import { umdWrapper } from "esbuild-plugin-umd-wrapper";
 
 const umdWrapperOptions = {
-  libraryName: "RfxMod", // default is unset
-  external: "inherit", // <= default
-  amdLoaderName: "define" // <= default
+  libraryName: "RfxMod",
+  external: "inherit",
+  amdLoaderName: "define"
 }
 
-//for the CJS build: we take the import url and translate it into it's corresponding functions and annd that back to the file.
 const dataUrl = {
     name: 'data-url-to-functions',
     setup(build) {
@@ -35,9 +29,7 @@ const dataUrl = {
 let makeAllPackagesExternalPlugin = {
   name: 'make-all-packages-external',
   setup(build) {
-
-    // build.onResolve({ filter: /protocol/ }, args => ({ external: false }))
-    let filter = /^[^.\/]|^\.[^.\/]|^\.\.[^\/]/ // Must not start with "/" or "./" or "../"
+    let filter = /^[^.\/]|^\.[^.\/]|^\.\.[^\/]/
     build.onResolve({ filter }, args => ({ path: args.path, external: true }))
   },
 }
@@ -58,8 +50,23 @@ build({
   outfile: `./dist/index.js`,
   external: ["fs", "ws", "path"],
   plugins: [dataUrl, umdWrapper(umdWrapperOptions)]
-  // plugins: [dtsPlugin({
-  //   outDir: `./dist/`,
-  //   tsconfig: "tsconfig.json"
-  // })]
+})
+
+build({
+  bundle: true,
+  format: "esm",
+  entryPoints: [`./src/api.ts`],
+  outfile: `./dist/api.mjs`,
+  plugins: [],
+  external: ["fs", "ws", "path"],
+})
+
+build({
+  bundle: true,
+  format: "iife",
+  entryPoints: [`./src/api.ts`],
+  outfile: `./dist/api.js`,
+  external: ["fs", "ws", "path"],
+  globalName: "RefluxAPIModule",
+  plugins: [dataUrl]
 })

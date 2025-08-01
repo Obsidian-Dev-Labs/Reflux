@@ -1,142 +1,134 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Dusk</title>
-    <style>
-      :root {
-        --input-height: 48px;
-      }
 
-      @font-face {
-        font-family: "Inter";
-        src: url(./Inter.ttf);
-      }
+<head>
+  <title>Dusk</title>
+  <style>
+    :root {
+      --input-height: 48px;
+    }
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+    @font-face {
+      font-family: "Inter";
+      src: url(./Inter.ttf);
+    }
 
-      html,
-      body {
-        background-color: #1a1a1a;
-        font-family: "Inter";
-      }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-      .top-bar {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        gap: 6px;
-      }
+    html,
+    body {
+      background-color: #1a1a1a;
+      font-family: "Inter";
+    }
 
-      .top-bar div {
-        height: var(--input-height);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        background-color: #ffffff28;
-        border: 2px solid #ffffff28;
-        border-radius: 10px;
-        transition: 150ms ease-in-out;
-      }
+    .top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      gap: 6px;
+    }
 
-      .top-bar div.focused {
-        border-color: #ffffff80;
-      }
+    .top-bar div {
+      height: var(--input-height);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      background-color: #ffffff28;
+      border: 2px solid #ffffff28;
+      border-radius: 10px;
+      transition: 150ms ease-in-out;
+    }
 
-      .top-bar div:hover {
-        border-color: #ffffff60;
-      }
+    .top-bar div.focused {
+      border-color: #ffffff80;
+    }
 
-      .top-bar input {
-        width: 100%;
-        height: 100%;
-        background-color: transparent;
-        border: none;
-        color: #ffffffcd;
-        padding-left: 8px;
-        font-weight: 600;
-        font-size: 18px;
-        line-height: 1;
-        outline: none;
-      }
+    .top-bar div:hover {
+      border-color: #ffffff60;
+    }
 
-      .top-bar input::placeholder {
-        color: #ffffff80;
-        font-weight: 450;
-      }
+    .top-bar input {
+      width: 100%;
+      height: 100%;
+      background-color: transparent;
+      border: none;
+      color: #ffffffcd;
+      padding-left: 8px;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 1;
+      outline: none;
+    }
 
-      .top-bar button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: max-content;
-        margin-right: 4px;
-        padding: 4px;
-        background-color: #ffffff28;
-        color: #ffffffcd;
-        border: 2px solid #ffffff28;
-        border-radius: 8px;
-        font-weight: 550;
-        font-size: 18px;
-        cursor: pointer;
-      }
+    .top-bar input::placeholder {
+      color: #ffffff80;
+      font-weight: 450;
+    }
 
-      .top-bar button svg {
-        width: 24px;
-        height: 24px;
-        fill: currentColor;
-      }
+    .top-bar button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: max-content;
+      margin-right: 4px;
+      padding: 4px;
+      background-color: #ffffff28;
+      color: #ffffffcd;
+      border: 2px solid #ffffff28;
+      border-radius: 8px;
+      font-weight: 550;
+      font-size: 18px;
+      cursor: pointer;
+    }
 
-      .iframe-container {
-        width: 100%;
-        height: calc(100vh - 50px);
-        position: relative;
-      }
+    .top-bar button svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
 
-      #frame {
-        width: 100%;
-        height: 100%;
-        border: none;
-      }
-    </style>
-    <script src="/baremux/index.js"></script>
-    <script src="/scram/scramjet.controller.js"></script>
-  </head>
-  <body>
-    <div class="top-bar">
-      <div>
-        <input
-          autofocus
-          autocapitalize="false"
-          id="input"
-          type="text"
-          placeholder="Enter something..."
-        />
-        <button>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
-      </div>
+    .iframe-container {
+      width: 100%;
+      height: calc(100vh - 50px);
+      position: relative;
+    }
+
+    #frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+  <script src="/baremux/index.js"></script>
+  <script src="/scram/scramjet.all.js"></script>
+  <script src="/reflux/api.js"></script>
+</head>
+
+<body>
+  <div class="top-bar">
+    <div>
+      <input autofocus autocapitalize="false" id="input" type="text" placeholder="Enter something..." />
+      <button>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd"
+            d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
+            clip-rule="evenodd" />
+        </svg>
+      </button>
     </div>
+  </div>
 
-    <div class="iframe-container">
-      <iframe id="frame" src="./home.html"></iframe>
-    </div>
-  </body>
+  <div class="iframe-container">
+    <iframe id="frame" src="./home.html"></iframe>
+  </div>
+</body>
+
 </html>
 
 <script>
@@ -159,17 +151,17 @@
       }
     }
 
+    const { ScramjetController } = $scramjetLoadController();
+
     const scramjet = new ScramjetController({
       prefix: "/scram/route/",
       files: {
         wasm: "/scram/scramjet.wasm.wasm",
-        worker: "/scram/scramjet.worker.js",
-        client: "/scram/scramjet.client.js",
-        shared: "/scram/scramjet.shared.js",
+        all: "/scram/scramjet.all.js",
         sync: "/scram/scramjet.sync.js",
       },
       flags: {
-        rewriterLogs: true,
+        rewriterLogs: false,
       },
     });
 
@@ -229,202 +221,296 @@
     const client = new window.BareMux.BareClient();
     const response = await client.fetch("https://example.com");
     console.log("Response from example.com:", await response.text());
+    console.log("Full response object:", response);
 
     window.BMClient = client;
     window.BMConnection = connection;
 
-    function injectDiscordHeadMiddleware() {
-      return {
-        id: "inject-discord-head",
-        onResponse: async ({ request, response }, next) => {
-          try {
-            // Only proceed if this is a Discord response and it's HTML
-            if (
-              request.remote.hostname.includes("discord.com") &&
-              response.headers["content-type"]?.includes("text/html")
-            ) {
-              // Get body content as string
-              let originalHtml = response.body;
-
-              // If body is not a string (might be a stream or buffer)
-              if (typeof originalHtml !== "string") {
-                try {
-                  // Try to convert body to text
-                  originalHtml = await response.body.text();
-                } catch (err) {
-                  console.error(
-                    "[Discord middleware] Failed to read response body:",
-                    err
-                  );
-                  await next();
-                  return;
-                }
-              }
-
-              // Only inject if we have content and it contains a head tag
-              if (originalHtml && originalHtml.includes("</head>")) {
-                const injectedScript = `
-<link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css">
-<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\/script>`;
-
-                const modifiedHtml = originalHtml.replace(
-                  "</head>",
-                  injectedScript + "</head>"
-                );
-
-                response.body = modifiedHtml;
-                response.headers["content-length"] = String(modifiedHtml.length);
-
-                console.log("[Discord middleware] Successfully injected script");
-              } else {
-                console.warn(
-                  "[Discord middleware] Response doesn't contain </head> tag"
-                );
-              }
-            }
-          } catch (error) {
-            console.error("[Discord middleware] Error:", error);
-          }
-
-          // Always proceed to next middleware
-          await next();
-        },
-      };
-    }
-
-    // First, register the fixed middleware
-    /*control.port2.postMessage({
-      type: "addMiddleware",
-      id: "inject-discord-head",
-      fn: `(${injectDiscordHeadMiddleware.toString()})()`,
-    });*/
-
-    // Then test with these headers
-    const headers = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-      "Accept":
-        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
+    const initializeRefluxAPI = () => {
+      let RefluxAPIClass = null;
+      
+      if (window.RefluxAPIModule && window.RefluxAPIModule.RefluxAPI) {
+        RefluxAPIClass = window.RefluxAPIModule.RefluxAPI;
+      } else if (window.RefluxAPIModule) {
+        RefluxAPIClass = window.RefluxAPIModule;
+      }
+      
+      if (!RefluxAPIClass) {
+        console.error("RefluxAPIModule not found. Available on window:", Object.keys(window).filter(k => k.includes('Reflux')));
+        console.log("RefluxAPIModule object:", window.RefluxAPIModule);
+        return;
+      }
+      
+      initializeAPI(RefluxAPIClass);
     };
 
-    // Test the fetch
-    /*const discordRes = await window.BMClient.fetch("https://discord.com", {
-      headers,
-    });
-    console.log("Discord response status:", discordRes.status);
-    const text = await discordRes.text();
-    console.log("Discord response length:", text.length);
-    console.log(
-      "Discord response:",
-      text
-    );
-    if (text.includes("</head>")) {
-      console.log("Discord response contains </head> tag");
-    } else {
-      console.warn("Discord response does not contain </head> tag");
-    }
+    const initializeAPI = (RefluxAPIClass) => {
+      if (typeof RefluxAPIClass !== 'function') {
+        console.error("RefluxAPI is not a constructor. Type:", typeof RefluxAPIClass, "Value:", RefluxAPIClass);
+        
+        if (RefluxAPIClass && typeof RefluxAPIClass.RefluxAPI === 'function') {
+          RefluxAPIClass = RefluxAPIClass.RefluxAPI;
+        } else {
+          return;
+        }
+      }
 
-    if (text.includes("Vendicated/Vencord")) {
-      console.log("Vencord script successfully injected");
-    } else {
-      console.warn("Vencord script not found in response");
-    }*/
+      try {
+        console.log("Initializing RefluxAPI with constructor:", RefluxAPIClass.name);
+        
+        const api = new RefluxAPIClass(control.port2);
 
-    function createContentInjectionMiddleware(config = {}) {
-      return {
-        id: config.id || "content-injection-middleware",
-        onResponse: async ({ request, response }, next) => {
-          try {
-            // Check if we should process this request based on hostname pattern
-            const hostnamePattern = config.hostnamePattern || /.*/;
-            if (!hostnamePattern.test(request.remote.hostname)) {
-              await next();
-              return;
-            }
+        console.log("Testing the new Plugin System...");
+        
+        const examplePlugin = {
+          function: `
+            /* @browser */
+            console.log('🚀 Example plugin executed on:', url);
+            console.log('🚀 Plugin name:', pluginName);
+            /* @/browser */
+          `,
+          name: 'com.example.logger',
+          sites: ['*']
+        };
+        
+        api.addPlugin(examplePlugin).then(() => {
+          console.log("Example logger plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add example plugin:", error);
+        });
 
-            // Check content type - typically we only want to modify HTML
-            const contentType = response.headers["content-type"] || "";
-            if (!contentType.includes("text/html") && !config.forceProcess) {
-              await next();
-              return;
-            }
-
-            // Get response body as string
-            let content = response.body;
-            if (typeof content !== "string") {
-              try {
-                content = await response.body.text();
-              } catch (err) {
-                console.error("[Injection Middleware] Failed to read response body:", err);
-                await next();
-                return;
+        const exampleComPlugin = {
+          function: `
+            /* @browser */
+            console.log('🎯 Example.com plugin running on:', url);
+            
+            function enhanceExampleCom() {
+              const h1Elements = document.querySelectorAll('h1');
+              console.log('Found', h1Elements.length, 'h1 elements');
+              
+              h1Elements.forEach((h1, index) => {
+                h1.style.cssText = 'color: #ff6b6b !important; background: #ffe066 !important; padding: 10px !important; border-radius: 5px !important; border: 2px solid #ff6b6b !important;';
+                h1.innerHTML = '🚀 ENHANCED BY REFLUX: ' + h1.innerHTML;
+                console.log('Enhanced h1 element', index + 1);
+              });
+              
+              if (h1Elements.length === 0) {
+                console.log('No h1 elements found, adding a banner instead');
+                const banner = document.createElement('div');
+                banner.innerHTML = '🚀 Reflux Plugin Active on Example.com!';
+                banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff6b6b; color: white; padding: 10px; text-align: center; z-index: 10000; font-weight: bold;';
+                document.body.appendChild(banner);
+                document.body.style.marginTop = '50px';
               }
             }
-
-            // Skip if no content
-            if (!content) {
-              console.warn("[Injection Middleware] Empty response body");
-              await next();
-              return;
-            }
-
-            // Process the content based on injection mode
-            let modifiedContent = content;
             
-            if (config.injectionMode === "replace" && config.targetPattern) {
-              // Replace mode - completely replace matched content
-              const pattern = new RegExp(config.targetPattern, config.patternFlags || "g");
-              modifiedContent = content.replace(pattern, config.injectionContent);
-            } 
-            else if (config.injectionMode === "before" && config.targetPattern) {
-              // Before mode - insert before matched content
-              const pattern = new RegExp(config.targetPattern, config.patternFlags || "");
-              modifiedContent = content.replace(pattern, `${config.injectionContent}$&`);
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', enhanceExampleCom);
+            } else {
+              enhanceExampleCom();
             }
-            else if (config.injectionMode === "after" && config.targetPattern) {
-              // After mode - insert after matched content
-              const pattern = new RegExp(config.targetPattern, config.patternFlags || "");
-              modifiedContent = content.replace(pattern, `$&${config.injectionContent}`);
-            }
-            else if (config.injectionMode === "custom" && typeof config.customProcessor === "function") {
-              // Custom mode - use provided function to transform content
-              modifiedContent = config.customProcessor(content, request);
-            }
-            else {
-              // Default - append to end of body if no other mode specified
-              modifiedContent = content + config.injectionContent;
-            }
+            /* @/browser */
+          `,
+          name: 'com.example.example-com-enhancer',
+          sites: ['example.com', 'www.example.com']
+        };
+        
+        api.addPlugin(exampleComPlugin).then(() => {
+          console.log("Example.com enhancer plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add Example.com plugin:", error);
+        });
 
-            // Update the response
-            response.body = modifiedContent;
-            response.headers["content-length"] = String(modifiedContent.length);
+        const googlePlugin = {
+          function: `
+            if (body.includes('<title>')) {
+              return body.replace('<title>', '<title>[MODIFIED BY REFLUX] ');
+            }
+            return body;
+          `,
+          name: 'com.example.google-modifier',
+          sites: ['google.com', 'www.google.com']
+        };
+        
+        api.addPlugin(googlePlugin).then(() => {
+          console.log("Google modifier plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add Google plugin:", error);
+        });
 
-            console.log(`[${config.id || "Injection Middleware"}] Content injection successful`);
-          } catch (error) {
-            console.error(`[${config.id || "Injection Middleware"}] Error:`, error);
-          }
+        const githubPlugin = {
+          function: `
+            if (body.includes('</head>')) {
+              const customCSS = \`
+                <style>
+                  .reflux-banner {
+                    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+                    color: white;
+                    text-align: center;
+                    padding: 10px;
+                    font-weight: bold;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    z-index: 9999;
+                  }
+                  body { margin-top: 40px !important; }
+                </style>
+              \`;
+              
+              const banner = \`<div class="reflux-banner">🚀 Enhanced by Reflux Plugin System</div>\`;
+              
+              let modifiedBody = body.replace('</head>', customCSS + '</head>');
+              
+              const bodyTagMatch = modifiedBody.match(/<body[^>]*>/);
+              if (bodyTagMatch) {
+                const bodyTag = bodyTagMatch[0];
+                modifiedBody = modifiedBody.replace(bodyTag, bodyTag + banner);
+              }
+              
+              return modifiedBody;
+            }
+            return body;
+          `,
+          name: 'com.example.github-enhancer',
+          sites: ['github.com']
+        };
 
-          // Always proceed to next middleware
-          await next();
-        }
-      };
+        api.addPlugin(googlePlugin).then(() => {
+          console.log("Google modifier plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add Google plugin:", error);
+        });
+
+        const vencordPlugin = {
+          function: `
+            if (body.includes('</head>')) {
+              const customCSS = \`
+                <link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css" />
+              \`;
+
+              const banner = \`<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\/script>\`;
+
+              let modifiedBody = body.replace('</head>', customCSS + '</head>');
+              
+              const bodyTagMatch = modifiedBody.match(/<body[^>]*>/);
+              if (bodyTagMatch) {
+                const bodyTag = bodyTagMatch[0];
+                modifiedBody = modifiedBody.replace(bodyTag, bodyTag + banner);
+              }
+              
+              return modifiedBody;
+            }
+            return body;
+          `,
+          name: 'com.example.vencord-enhancer',
+          sites: ['discord.com']
+        };
+        
+        api.addPlugin(githubPlugin).then(() => {
+          console.log("GitHub enhancer plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add GitHub plugin:", error);
+        });
+
+        api.addPlugin(vencordPlugin).then(() => {
+          console.log("Vencord enhancer plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add Vencord plugin:", error);
+        });
+
+
+        const socialMediaPlugin = {
+          function: `
+            /* @browser */
+            console.log('📱 Social media plugin activated on:', url);
+            console.log('📱 Plugin:', pluginName);
+            
+            const socialBanner = document.createElement('div');
+            socialBanner.innerHTML = '📱 Social Media Enhanced by Reflux!';
+            socialBanner.style.cssText = 'position: fixed; bottom: 0; left: 0; right: 0; background: #8b5cf6; color: white; padding: 8px; text-align: center; z-index: 999999; font-size: 14px;';
+            
+            function addSocialEnhancements() {
+              document.body.appendChild(socialBanner);
+              console.log('📱 Social media enhancements added');
+            }
+            
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', addSocialEnhancements);
+            } else {
+              addSocialEnhancements();
+            }
+            /* @/browser */
+          `,
+          name: 'com.example.social-enhancer',
+          sites: [ 'www.instagram.com', 'instagram.com']
+        };
+        
+        api.addPlugin(socialMediaPlugin).then(() => {
+          console.log("Social media enhancer plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add social media plugin:", error);
+        });
+
+        setTimeout(() => {
+          api.listPlugins().then(plugins => {
+            console.log("Currently loaded plugins:", plugins);
+          }).catch(error => {
+            console.error("Failed to list plugins:", error);
+          });
+        }, 1000);
+
+        const debugPlugin = {
+          function: `
+            /* @browser */
+            console.log('🔍 DEBUG PLUGIN - URL:', url);
+            console.log('🔍 DEBUG PLUGIN - Plugin:', pluginName);
+            console.log('🔍 DEBUG PLUGIN - User Agent:', navigator.userAgent);
+            console.log('🔍 DEBUG PLUGIN - Page Title:', document.title);
+            console.log('🔍 DEBUG PLUGIN - DOM Ready State:', document.readyState);
+            
+            const debugIndicator = document.createElement('div');
+            debugIndicator.innerHTML = '🔍 DEBUG: Reflux Plugin Active';
+            debugIndicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ff0000; color: white; padding: 5px 10px; border-radius: 5px; z-index: 999999; font-size: 12px; font-family: monospace; border: 2px solid #ffffff;';
+            
+            // Add to page when DOM is ready
+            function addDebugIndicator() {
+              document.body.appendChild(debugIndicator);
+              console.log('🔍 DEBUG PLUGIN - Visual indicator added');
+            }
+            
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', addDebugIndicator);
+            } else {
+              addDebugIndicator();
+            }
+            /* @/browser */
+          `,
+          name: 'com.debug.all-sites',
+          sites: ['*']
+        };
+        
+        api.addPlugin(debugPlugin).then(() => {
+          console.log("Debug plugin added successfully!");
+        }).catch(error => {
+          console.error("Failed to add debug plugin:", error);
+        });
+
+        window.RefluxAPIInstance = api;
+        console.log("RefluxAPI initialized successfully!");
+        
+      } catch (error) {
+        console.error("Failed to initialize RefluxAPI:", error);
+      }
+    };
+
+    if (window.RefluxAPIModule) {
+      initializeRefluxAPI();
+    } else {
+      setTimeout(() => {
+        initializeRefluxAPI();
+      }, 100);
     }
-
-    // Register Discord Vencord injection middleware
-    control.port2.postMessage({
-      type: "addMiddleware",
-      id: "discord-vencord-injector",
-      fn: `(${createContentInjectionMiddleware.toString()})({
-        id: "discord-vencord-injector",
-        hostnamePattern: /discord\.com/,
-        injectionMode: "before", 
-        targetPattern: "</head>",
-        injectionContent: \`
-<link rel="stylesheet" href="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.css">
-<script src="https://github.com/Vendicated/Vencord/releases/download/devbuild/browser.js"><\\/script>
-\`
-      })`,
-    });
   })();
-  </script>
+</script>

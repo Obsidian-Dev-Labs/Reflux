@@ -4,12 +4,12 @@ import type {
   BareTransport
 } from "@mercuryworkshop/bare-mux";
 
-import { MiddlewareTransport, MiddlewareFunction } from "./middleware";
+import { MiddlewareTransport } from "./middleware";
 
 export type RefluxOptions = {
   transport: string;
-  middleware?: MiddlewareFunction[];
   controlPort?: MessagePort;
+  middleware?: any[];
   [key: string]: any;
 };
 
@@ -33,10 +33,7 @@ export default class RefluxTransport implements BareTransport {
     const TransportClass = mod.default;
     this.inner = new TransportClass(innerOptions);
 
-    this.wrapped = new MiddlewareTransport(this.inner, {
-      middleware,
-      controlPort
-    });
+    this.wrapped = new MiddlewareTransport(this.inner, controlPort);
 
     await this.wrapped.init();
     this.ready = true;
@@ -76,3 +73,6 @@ export default class RefluxTransport implements BareTransport {
     );
   }
 }
+
+export { RefluxAPI } from "./api";
+export type { MiddlewareFunction, RequestContext, ResponseContext, RefluxPlugin } from "./api";
