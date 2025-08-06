@@ -32,7 +32,7 @@ export default class RefluxTransport implements BareTransport {
     const mod = await import(transportPath);
     const TransportClass = mod.default;
     this.inner = new TransportClass(innerOptions);
-
+    await this.inner.init();
     this.wrapped = new MiddlewareTransport(this.inner, controlPort);
 
     await this.wrapped.init();
