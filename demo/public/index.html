@@ -201,24 +201,19 @@
       }
     });
 
-    const control = new MessageChannel();
-    console.log("Created control channel:", control);
-
     const connection = new window.BareMux.BareMuxConnection(
       "/baremux/worker.js"
     );
     
-    console.log("Setting transport with control port...");
+    console.log("Setting transport...");
     await connection.setTransport(
       "/reflux/index.mjs",
       [
         {
           transport: "/epoxy/index.mjs",
           wisp: "wss://gointospace.app/wisp/",
-          controlPort: control.port1,
         },
-      ],
-      [control.port1]
+      ]
     );
     console.log("Transport set successfully");
 
@@ -261,202 +256,281 @@
 
       try {
         console.log("Initializing RefluxAPI with constructor:", RefluxAPIClass.name);
-        console.log("Control port available:", !!control.port2);
         
-        const api = new RefluxAPIClass(control.port2);
+        const api = new RefluxAPIClass();
         console.log("RefluxAPI instance created:", api);
         console.log("API methods available:", Object.getOwnPropertyNames(Object.getPrototypeOf(api)));
 
         console.log("Testing the new Plugin System...");
         
-        const examplePlugin = {
-          function: `
-            /* @browser */
-            console.log('🚀 Example plugin executed on:', url);
-            console.log('🚀 Plugin name:', pluginName);
-            /* @/browser */
-          `,
-          name: 'com.example.logger',
-          sites: ['*']
-        };
+        // Note: The RefluxAPI now works directly with localforage storage
+        // No MessagePorts needed - plugins are stored and managed locally
         
-        console.log("Adding example plugin...");
-        api.addPlugin(examplePlugin).then(() => {
-          console.log("✅ Example logger plugin added successfully!");
-        }).catch(error => {
-          console.error("❌ Failed to add example plugin:", error);
-        });
-
-        const exampleComPlugin = {
-          function: `
-            /* @browser */
-            console.log('🎯 Example.com plugin running on:', url);
+        // Add all plugins sequentially to avoid race conditions
+        const addPluginSequentially = async () => {
+          try {
+            // Plugin 1: Example Logger
+            const examplePlugin = {
+              function: `
+                /* @browser */
+                console.log('🚀 Example plugin executed on:', url);
+                console.log('🚀 Plugin name:', pluginName);
+                /* @/browser */
+              `,
+              name: 'com.example.logger',
+              sites: ['*']
+            };
             
-            function enhanceExampleCom() {
-              const h1Elements = document.querySelectorAll('h1');
-              console.log('Found', h1Elements.length, 'h1 elements');
-              
-              h1Elements.forEach((h1, index) => {
-                h1.style.cssText = 'color: #ff6b6b !important; background: #ffe066 !important; padding: 10px !important; border-radius: 5px !important; border: 2px solid #ff6b6b !important;';
-                h1.innerHTML = '🚀 ENHANCED BY REFLUX: ' + h1.innerHTML;
-                console.log('Enhanced h1 element', index + 1);
-              });
-              
-              if (h1Elements.length === 0) {
-                console.log('No h1 elements found, adding a banner instead');
-                const banner = document.createElement('div');
-                banner.innerHTML = '🚀 Reflux Plugin Active on Example.com!';
-                banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff6b6b; color: white; padding: 10px; text-align: center; z-index: 10000; font-weight: bold;';
-                document.body.appendChild(banner);
-                document.body.style.marginTop = '50px';
+            console.log("Adding example plugin...");
+            await api.addPlugin(examplePlugin);
+            console.log("✅ Example logger plugin added successfully!");
+            await api.enablePlugin('com.example.logger');
+            console.log("✅ Example logger plugin enabled by default!");
+
+            // Plugin 2: Example.com Enhancer
+            const exampleComPlugin = {
+              function: `
+                /* @browser */
+                console.log('🎯 Example.com plugin running on:', url);
+                
+                function enhanceExampleCom() {
+                  const h1Elements = document.querySelectorAll('h1');
+                  console.log('Found', h1Elements.length, 'h1 elements');
+                  
+                  h1Elements.forEach((h1, index) => {
+                    h1.style.cssText = 'color: #ff6b6b !important; background: #ffe066 !important; padding: 10px !important; border-radius: 5px !important; border: 2px solid #ff6b6b !important;';
+                    h1.innerHTML = '🚀 ENHANCED BY REFLUX: ' + h1.innerHTML;
+                    console.log('Enhanced h1 element', index + 1);
+                  });
+                  
+                  if (h1Elements.length === 0) {
+                    console.log('No h1 elements found, adding a banner instead');
+                    const banner = document.createElement('div');
+                    banner.innerHTML = '🚀 Reflux Plugin Active on Example.com!';
+                    banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff6b6b; color: white; padding: 10px; text-align: center; z-index: 10000; font-weight: bold;';
+                    document.body.appendChild(banner);
+                    document.body.style.marginTop = '50px';
+                  }
+                }
+                
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', enhanceExampleCom);
+                } else {
+                  enhanceExampleCom();
+                }
+                /* @/browser */
+              `,
+              name: 'com.example.example-com-enhancer',
+              sites: ['example.com', 'www.example.com']
+            };
+            
+            console.log("Adding example.com enhancer plugin...");
+            await api.addPlugin(exampleComPlugin);
+            console.log("✅ Example.com enhancer plugin added successfully!");
+            await api.enablePlugin('com.example.example-com-enhancer');
+            console.log("✅ Example.com enhancer plugin enabled by default!");
+
+            // Plugin 3: Google Modifier
+            const googlePlugin = {
+              function: `
+                if (body.includes('<title>')) {
+                  return body.replace('<title>', '<title>[MODIFIED BY REFLUX] ');
+                }
+                return body;
+              `,
+              name: 'com.example.google-modifier',
+              sites: ['google.com', 'www.google.com']
+            };
+            
+            console.log("Adding Google modifier plugin...");
+            await api.addPlugin(googlePlugin);
+            console.log("✅ Google modifier plugin added successfully!");
+            await api.enablePlugin('com.example.google-modifier');
+            console.log("✅ Google modifier plugin enabled by default!");
+
+            // Plugin 4: GitHub Enhancer
+            const githubPlugin = {
+              function: `
+                if (body.includes('</head>')) {
+                  const customCSS = '<style>.reflux-banner {background: linear-gradient(90deg, #6366f1, #8b5cf6);color: white;text-align: center;padding: 10px;font-weight: bold;position: fixed;top: 0;left: 0;right: 0;z-index: 9999;}body { margin-top: 40px !important; }</style>';
+                  const banner = '<div class="reflux-banner">🚀 Enhanced by Reflux Plugin System</div>';
+                  
+                  let modifiedBody = body.replace('</head>', customCSS + '</head>');
+                  
+                  const bodyTagMatch = modifiedBody.match(/<body[^>]*>/);
+                  if (bodyTagMatch) {
+                    const bodyTag = bodyTagMatch[0];
+                    modifiedBody = modifiedBody.replace(bodyTag, bodyTag + banner);
+                  }
+                  
+                  return modifiedBody;
+                }
+                return body;
+              `,
+              name: 'com.example.github-enhancer',
+              sites: ['github.com']
+            };
+
+            console.log("Adding GitHub enhancer plugin...");
+            await api.addPlugin(githubPlugin);
+            console.log("✅ GitHub enhancer plugin added successfully!");
+            await api.enablePlugin('com.example.github-enhancer');
+            console.log("✅ GitHub enhancer plugin enabled by default!");
+
+            // Plugin 5: Social Media Enhancer
+            const socialMediaPlugin = {
+              function: `
+                /* @browser */
+                console.log('📱 Social media plugin activated on:', url);
+                console.log('📱 Plugin:', pluginName);
+                
+                const socialBanner = document.createElement('div');
+                socialBanner.innerHTML = '📱 Social Media Enhanced by Reflux!';
+                socialBanner.style.cssText = 'position: fixed; bottom: 0; left: 0; right: 0; background: #8b5cf6; color: white; padding: 8px; text-align: center; z-index: 999999; font-size: 14px;';
+                
+                function addSocialEnhancements() {
+                  document.body.appendChild(socialBanner);
+                  console.log('📱 Social media enhancements added');
+                }
+                
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', addSocialEnhancements);
+                } else {
+                  addSocialEnhancements();
+                }
+                /* @/browser */
+              `,
+              name: 'com.example.social-enhancer',
+              sites: [ 'www.instagram.com', 'instagram.com']
+            };
+            
+            console.log("Adding social media enhancer plugin...");
+            await api.addPlugin(socialMediaPlugin);
+            console.log("✅ Social media enhancer plugin added successfully!");
+            await api.enablePlugin('com.example.social-enhancer');
+            console.log("✅ Social media enhancer plugin enabled by default!");
+
+            // Plugin 6: Debug Plugin
+            const debugPlugin = {
+              function: `
+                /* @browser */
+                console.log('🔍 DEBUG PLUGIN - URL:', url);
+                console.log('🔍 DEBUG PLUGIN - Plugin:', pluginName);
+                console.log('🔍 DEBUG PLUGIN - User Agent:', navigator.userAgent);
+                console.log('🔍 DEBUG PLUGIN - Page Title:', document.title);
+                console.log('🔍 DEBUG PLUGIN - DOM Ready State:', document.readyState);
+                
+                const debugIndicator = document.createElement('div');
+                debugIndicator.innerHTML = '🔍 DEBUG: Reflux Plugin Active';
+                debugIndicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ff0000; color: white; padding: 5px 10px; border-radius: 5px; z-index: 999999; font-size: 12px; font-family: monospace; border: 2px solid #ffffff;';
+                
+                // Add to page when DOM is ready
+                function addDebugIndicator() {
+                  document.body.appendChild(debugIndicator);
+                  console.log('🔍 DEBUG PLUGIN - Visual indicator added');
+                }
+                
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', addDebugIndicator);
+                } else {
+                  addDebugIndicator();
+                }
+                /* @/browser */
+              `,
+              name: 'com.debug.all-sites',
+              sites: ['*']
+            };
+            
+            console.log("Adding debug plugin...");
+            await api.addPlugin(debugPlugin);
+            console.log("✅ Debug plugin added successfully!");
+            await api.enablePlugin('com.debug.all-sites');
+            console.log("✅ Debug plugin enabled by default!");
+
+            console.log("🎉 All plugins added and enabled successfully!");
+
+            // Force middleware to reload plugins from storage
+            console.log("🔄 Triggering middleware plugin reload...");
+            
+            // Access the middleware transport and reload plugins
+            setTimeout(() => {
+              // The transport should be accessible through the connection
+              if (window.BMConnection && window.BMConnection._transport && window.BMConnection._transport.middleware) {
+                window.BMConnection._transport.middleware.reloadPlugins().then(() => {
+                  console.log("✅ Middleware reloaded plugins successfully!");
+                }).catch(error => {
+                  console.error("❌ Failed to reload plugins in middleware:", error);
+                });
+              } else {
+                console.log("ℹ️  Middleware reload method not available, plugins should load on next request");
+                console.log("Available on BMConnection:", Object.keys(window.BMConnection || {}));
               }
-            }
-            
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', enhanceExampleCom);
-            } else {
-              enhanceExampleCom();
-            }
-            /* @/browser */
-          `,
-          name: 'com.example.example-com-enhancer',
-          sites: ['example.com', 'www.example.com']
-        };
-        
-        api.addPlugin(exampleComPlugin).then(() => {
-          console.log("Example.com enhancer plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add Example.com plugin:", error);
-        });
+            }, 500);
 
-        const googlePlugin = {
-          function: `
-            if (body.includes('<title>')) {
-              return body.replace('<title>', '<title>[MODIFIED BY REFLUX] ');
-            }
-            return body;
-          `,
-          name: 'com.example.google-modifier',
-          sites: ['google.com', 'www.google.com']
-        };
-        
-        api.addPlugin(googlePlugin).then(() => {
-          console.log("Google modifier plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add Google plugin:", error);
-        });
-
-        const githubPlugin = {
-          function: `
-            if (body.includes('</head>')) {
-              const customCSS = '<style>.reflux-banner {background: linear-gradient(90deg, #6366f1, #8b5cf6);color: white;text-align: center;padding: 10px;font-weight: bold;position: fixed;top: 0;left: 0;right: 0;z-index: 9999;}body { margin-top: 40px !important; }</style>';
-              const banner = '<div class="reflux-banner">🚀 Enhanced by Reflux Plugin System</div>';
-              
-              let modifiedBody = body.replace('</head>', customCSS + '</head>');
-              
-              const bodyTagMatch = modifiedBody.match(/<body[^>]*>/);
-              if (bodyTagMatch) {
-                const bodyTag = bodyTagMatch[0];
-                modifiedBody = modifiedBody.replace(bodyTag, bodyTag + banner);
-              }
-              
-              return modifiedBody;
-            }
-            return body;
-          `,
-          name: 'com.example.github-enhancer',
-          sites: ['github.com']
+          } catch (error) {
+            console.error("❌ Error adding plugins:", error);
+          }
         };
 
-        api.addPlugin(githubPlugin).then(() => {
-          console.log("GitHub enhancer plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add GitHub plugin:", error);
-        });
-
-        
-        api.addPlugin(githubPlugin).then(() => {
-          console.log("GitHub enhancer plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add GitHub plugin:", error);
-        });
-
-
-        const socialMediaPlugin = {
-          function: `
-            /* @browser */
-            console.log('📱 Social media plugin activated on:', url);
-            console.log('📱 Plugin:', pluginName);
-            
-            const socialBanner = document.createElement('div');
-            socialBanner.innerHTML = '📱 Social Media Enhanced by Reflux!';
-            socialBanner.style.cssText = 'position: fixed; bottom: 0; left: 0; right: 0; background: #8b5cf6; color: white; padding: 8px; text-align: center; z-index: 999999; font-size: 14px;';
-            
-            function addSocialEnhancements() {
-              document.body.appendChild(socialBanner);
-              console.log('📱 Social media enhancements added');
-            }
-            
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', addSocialEnhancements);
-            } else {
-              addSocialEnhancements();
-            }
-            /* @/browser */
-          `,
-          name: 'com.example.social-enhancer',
-          sites: [ 'www.instagram.com', 'instagram.com']
-        };
-        
-        api.addPlugin(socialMediaPlugin).then(() => {
-          console.log("Social media enhancer plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add social media plugin:", error);
-        });
+        // Execute the sequential plugin addition
+        addPluginSequentially();
 
         setTimeout(() => {
+          // Simply list all plugins without manipulating them
           api.listPlugins().then(plugins => {
+            console.log("=== All Plugins (Enabled by Default) ===");
             console.log("Currently loaded plugins:", plugins);
+            
+            // Debug: Show enabled plugin IDs
+            api.getEnabledPlugins().then(enabledIds => {
+              console.log("=== Enabled Plugin IDs ===");
+              console.log(enabledIds);
+              
+              // Check if all expected plugins are enabled
+              const expectedPlugins = [
+                'com.example.logger',
+                'com.example.example-com-enhancer', 
+                'com.example.google-modifier',
+                'com.example.github-enhancer',
+                'com.example.social-enhancer',
+                'com.debug.all-sites'
+              ];
+              
+              expectedPlugins.forEach(pluginId => {
+                if (enabledIds.includes(pluginId)) {
+                  console.log(`✅ ${pluginId} is enabled`);
+                } else {
+                  console.log(`❌ ${pluginId} is NOT enabled - attempting to enable it now`);
+                  api.enablePlugin(pluginId).then(() => {
+                    console.log(`✅ ${pluginId} enabled successfully`);
+                  }).catch(error => {
+                    console.error(`❌ Failed to enable ${pluginId}:`, error);
+                  });
+                }
+              });
+            });
+            
+            // Plugin Management Examples (commented out):
+            // 
+            // To disable a plugin:
+            // api.disablePlugin('plugin-name').then(() => console.log('Plugin disabled'));
+            //
+            // To enable a plugin:
+            // api.enablePlugin('plugin-name').then(() => console.log('Plugin enabled'));
+            //
+            // To update plugin sites:
+            // api.updatePluginSites('plugin-name', ['example.com', 'test.com']);
+            //
+            // To remove a plugin:
+            // api.removePlugin('plugin-name').then(() => console.log('Plugin removed'));
+            //
+            // To get only enabled plugins:
+            // api.getEnabledPlugins().then(enabled => console.log('Enabled:', enabled));
+            
           }).catch(error => {
             console.error("Failed to list plugins:", error);
           });
-        }, 1000);
-
-        const debugPlugin = {
-          function: `
-            /* @browser */
-            console.log('🔍 DEBUG PLUGIN - URL:', url);
-            console.log('🔍 DEBUG PLUGIN - Plugin:', pluginName);
-            console.log('🔍 DEBUG PLUGIN - User Agent:', navigator.userAgent);
-            console.log('🔍 DEBUG PLUGIN - Page Title:', document.title);
-            console.log('🔍 DEBUG PLUGIN - DOM Ready State:', document.readyState);
-            
-            const debugIndicator = document.createElement('div');
-            debugIndicator.innerHTML = '🔍 DEBUG: Reflux Plugin Active';
-            debugIndicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #ff0000; color: white; padding: 5px 10px; border-radius: 5px; z-index: 999999; font-size: 12px; font-family: monospace; border: 2px solid #ffffff;';
-            
-            // Add to page when DOM is ready
-            function addDebugIndicator() {
-              document.body.appendChild(debugIndicator);
-              console.log('🔍 DEBUG PLUGIN - Visual indicator added');
-            }
-            
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', addDebugIndicator);
-            } else {
-              addDebugIndicator();
-            }
-            /* @/browser */
-          `,
-          name: 'com.debug.all-sites',
-          sites: ['*']
-        };
-        
-        api.addPlugin(debugPlugin).then(() => {
-          console.log("Debug plugin added successfully!");
-        }).catch(error => {
-          console.error("Failed to add debug plugin:", error);
-        });
+        }, 3000); // Increased timeout to 3 seconds to allow sequential plugin loading
 
         window.RefluxAPIInstance = api;
         console.log("RefluxAPI initialized successfully!");

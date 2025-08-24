@@ -21,6 +21,10 @@ export default class RefluxTransport implements BareTransport {
 
   constructor(private opts: RefluxOptions) {}
 
+  get middleware(): MiddlewareTransport {
+    return this.wrapped;
+  }
+
   async init() {
     const {
       transport: transportPath,
@@ -33,7 +37,7 @@ export default class RefluxTransport implements BareTransport {
     const TransportClass = mod.default;
     this.inner = new TransportClass(innerOptions);
     await this.inner.init();
-    this.wrapped = new MiddlewareTransport(this.inner, controlPort);
+    this.wrapped = new MiddlewareTransport(this.inner);
 
     await this.wrapped.init();
     this.ready = true;

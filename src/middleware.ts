@@ -6,115 +6,90 @@ import type {
 
 import type { MiddlewareFunction, RequestContext, ResponseContext, MessagePortMessage, TransferrableResponse, RefluxPlugin } from "./api";
 
-const REFLUX_HEADER = "reflux-middleware";
-const REFLUX_VERSION = "1.0.0";
+import localforage from "localforage";
 
 export class MiddlewareTransport implements BareTransport {
   ready = false;
   private middleware: Map<string, MiddlewareFunction> = new Map();
   private plugins: Map<string, RefluxPlugin> = new Map();
-  private controlPort?: MessagePort;
+  private pluginStorage = localforage.createInstance({
+    name: 'Reflux',
+    storeName: 'plugins'
+  });
+  private statusStorage = localforage.createInstance({
+    name: 'Reflux',
+    storeName: 'status'
+  });
 
-  constructor(private readonly inner: BareTransport, controlPort?: MessagePort) {
-    this.controlPort = controlPort;
-    if (this.controlPort) {
-      this.setupControlPort();
-    }
+  constructor(private readonly inner: BareTransport) {
+    this.loadPluginsFromStorage();
   }
 
-  private setupControlPort() {
-    if (!this.controlPort) return;
+  public async reloadPlugins(): Promise<void> {
+    console.log('🔄 [Reflux Middleware] Reloading plugins...');
     
-    this.controlPort.onmessage = async (event) => {
-      const message: MessagePortMessage = event.data;
-      
-      if (message.reflux !== REFLUX_HEADER) {
-        return;
-      }
-      
-      if (message.version && !this.isVersionCompatible(message.version)) {
-        console.warn(`Reflux Transport version mismatch. Expected: ${REFLUX_VERSION}, Received: ${message.version}`);
-      }
-      
-      try {
-        switch (message.type) {
-          case 'addMiddleware':
-            if (message.middleware) {
-              this.middleware.set(message.middleware.id, message.middleware);
-            } else if (message.id && message.fn) {
-              const middlewareFunction = eval(`(${message.fn})`);
-              this.middleware.set(message.id, middlewareFunction);
-            }
-            this.sendResponse(message.messageId!, { success: true });
-            break;
-            
-          case 'removeMiddleware':
-            if (message.id) {
-              this.middleware.delete(message.id);
-              this.sendResponse(message.messageId!, { success: true });
-            }
-            break;
-            
-          case 'setMiddlewareEnabled':
-            if (message.id && this.middleware.has(message.id)) {
-              const middleware = this.middleware.get(message.id)!;
-              middleware.enabled = message.enabled!;
-              this.sendResponse(message.messageId!, { success: true });
-            }
-            break;
-            
-          case 'listMiddleware':
-            const list = Array.from(this.middleware.entries()).map(([id, middleware]) => ({
-              id,
-              enabled: this.isMiddlewareEnabled(middleware)
-            }));
-            this.sendResponse(message.messageId!, list);
-            break;
-
-          case 'addPlugin':
-            if (message.plugin) {
-              await this.addPlugin(message.plugin);
-              this.sendResponse(message.messageId!, { success: true });
-            }
-            break;
-
-          case 'removePlugin':
-            if (message.id) {
-              this.removePlugin(message.id);
-              this.sendResponse(message.messageId!, { success: true });
-            }
-            break;
-
-          case 'listPlugins':
-            const pluginList = Array.from(this.plugins.entries()).map(([name, plugin]) => ({
-              name,
-              sites: plugin.sites,
-              enabled: this.middleware.has(name) ? this.isMiddlewareEnabled(this.middleware.get(name)!) : false
-            }));
-            this.sendResponse(message.messageId!, pluginList);
-            break;
-        }
-      } catch (error) {
-        this.sendResponse(message.messageId!, { error: error.message });
-      }
-    };
+    this.plugins.clear();
+    this.middleware.clear();
+    
+    await this.loadPluginsFromStorage();
+    
+    console.log('✅ [Reflux Middleware] Plugin reload complete');
   }
 
-  private isVersionCompatible(version: string): boolean {
-    const [majorReceived] = version.split('.').map(Number);
-    const [majorExpected] = REFLUX_VERSION.split('.').map(Number);
-    return majorReceived === majorExpected;
-  }
-
-  private sendResponse(messageId: string, data: any) {
-    if (this.controlPort) {
-      this.controlPort.postMessage({
-        reflux: REFLUX_HEADER,
-        version: REFLUX_VERSION,
-        type: 'response',
-        messageId,
-        data
+  private async loadPluginsFromStorage(): Promise<void> {
+    try {
+      const enabledPluginIds = await this.statusStorage.getItem<string[]>('enabled') || [];
+      
+      const pluginKeys = await this.pluginStorage.keys();
+      
+      console.log('🔍 [Reflux Middleware] Debug Info:');
+      console.log('📋 All plugin keys in storage:', pluginKeys);
+      console.log('✅ Enabled plugin IDs:', enabledPluginIds);
+      
+      const metadataStorage = localforage.createInstance({
+        name: 'Reflux',
+        storeName: 'pluginMetadata'
       });
+      
+      for (const pluginId of pluginKeys) {
+        const pluginCode = await this.pluginStorage.getItem<string>(pluginId);
+        const metadata = await metadataStorage.getItem<{sites: string[], name: string}>(pluginId);
+        
+        console.log(`\n🔍 [Plugin: ${pluginId}]`);
+        console.log(`   Enabled: ${enabledPluginIds.includes(pluginId) ? '✅' : '❌'}`);
+        console.log(`   Sites: ${metadata?.sites ? JSON.stringify(metadata.sites) : "['*'] (default)"}`);
+        console.log(`   Code length: ${pluginCode ? pluginCode.length : 0} characters`);
+        
+        if (pluginCode && pluginCode.length > 0) {
+          console.log(`   Code preview: ${pluginCode.substring(0, 100)}${pluginCode.length > 100 ? '...' : ''}`);
+        }
+        
+        if (enabledPluginIds.includes(pluginId)) {
+          if (pluginCode) {
+            const plugin: RefluxPlugin = {
+              function: pluginCode,
+              name: pluginId,
+              sites: metadata?.sites || ['*']
+            };
+            
+            console.log(`   🚀 Loading plugin: ${pluginId}`);
+            await this.addPlugin(plugin);
+            console.log(`   ✅ Plugin loaded successfully: ${pluginId}`);
+          } else {
+            console.log(`   ❌ Plugin has no code: ${pluginId}`);
+          }
+        } else {
+          console.log(`   ⏭️  Skipping disabled plugin: ${pluginId}`);
+        }
+      }
+      
+      console.log(`\n📊 [Reflux Middleware] Summary:`);
+      console.log(`   Total plugins in storage: ${pluginKeys.length}`);
+      console.log(`   Enabled plugins: ${enabledPluginIds.length}`);
+      console.log(`   Loaded plugins: ${this.plugins.size}`);
+      console.log(`   Active middleware: ${this.middleware.size}`);
+    } catch (error) {
+      console.error('Error loading plugins from storage:', error);
     }
   }
 
@@ -126,6 +101,10 @@ export class MiddlewareTransport implements BareTransport {
   }
 
   private async addPlugin(plugin: RefluxPlugin): Promise<void> {
+    console.log(`🔧 [addPlugin] Adding plugin: ${plugin.name}`);
+    console.log(`   Sites: ${JSON.stringify(plugin.sites)}`);
+    console.log(`   Function length: ${plugin.function.length} characters`);
+    
     this.plugins.set(plugin.name, plugin);
 
     const pluginMiddleware: MiddlewareFunction = {
@@ -135,7 +114,13 @@ export class MiddlewareTransport implements BareTransport {
         
         const shouldRun = this.shouldPluginRunOnSite(plugin, ctx.request.remote);
         
+        console.log(`🌐 [${plugin.name}] URL: ${ctx.request.remote.href}`);
+        console.log(`🌐 [${plugin.name}] Should run: ${shouldRun ? '✅' : '❌'}`);
+        console.log(`🌐 [${plugin.name}] Content-Type: ${response.headers["content-type"] || 'none'}`);
+        
         if (shouldRun && response.headers["content-type"]?.includes("text/html")) {
+          console.log(`🚀 [${plugin.name}] Executing plugin on HTML content`);
+          
           if (response.body instanceof ReadableStream) {
             try {
               const [stream1, stream2] = response.body.tee();
@@ -144,9 +129,11 @@ export class MiddlewareTransport implements BareTransport {
               
               if (body && body.includes("</head>")) {
                 try {
+                  console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
                   const result = this.executePlugin(plugin, body, ctx.request.remote.href, response.headers);
                   
                   if (typeof result === 'string' && result !== body) {
+                    console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
                     return {
                       ...response,
                       body: result,
@@ -155,10 +142,14 @@ export class MiddlewareTransport implements BareTransport {
                         "content-length": String(result.length)
                       }
                     };
+                  } else {
+                    console.log(`ℹ️  [${plugin.name}] Plugin returned unchanged content`);
                   }
                 } catch (error) {
-                  console.error(`Error executing plugin ${plugin.name}:`, error);
+                  console.error(`❌ [${plugin.name}] Error executing plugin:`, error);
                 }
+              } else {
+                console.log(`ℹ️  [${plugin.name}] No </head> tag found in content`);
               }
               
               return {
@@ -167,7 +158,7 @@ export class MiddlewareTransport implements BareTransport {
               };
               
             } catch (error) {
-              console.error(`Error processing stream for plugin ${plugin.name}:`, error);
+              console.error(`❌ [${plugin.name}] Error processing stream:`, error);
               return response;
             }
           } else {
@@ -175,9 +166,11 @@ export class MiddlewareTransport implements BareTransport {
             
             if (body && body.includes("</head>")) {
               try {
+                console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
                 const result = this.executePlugin(plugin, body, ctx.request.remote.href, response.headers);
                 
                 if (typeof result === 'string' && result !== body) {
+                  console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
                   return {
                     ...response,
                     body: result,
@@ -186,12 +179,20 @@ export class MiddlewareTransport implements BareTransport {
                       "content-length": String(result.length)
                     }
                   };
+                } else {
+                  console.log(`ℹ️  [${plugin.name}] Plugin returned unchanged content`);
                 }
               } catch (error) {
-                console.error(`Error executing plugin ${plugin.name}:`, error);
+                console.error(`❌ [${plugin.name}] Error executing plugin:`, error);
               }
+            } else {
+              console.log(`ℹ️  [${plugin.name}] No </head> tag found in content`);
             }
           }
+        } else if (!shouldRun) {
+          console.log(`⏭️  [${plugin.name}] Skipping - site not in target list`);
+        } else if (!response.headers["content-type"]?.includes("text/html")) {
+          console.log(`⏭️  [${plugin.name}] Skipping - not HTML content`);
         }
         
         return response;
@@ -199,14 +200,20 @@ export class MiddlewareTransport implements BareTransport {
     };
 
     this.middleware.set(plugin.name, pluginMiddleware);
+    console.log(`✅ [addPlugin] Plugin middleware registered: ${plugin.name}`);
   }
 
   private executePlugin(plugin: RefluxPlugin, body: string, url: string, headers: Record<string, string>): string {
+    console.log(`🔧 [executePlugin] Running plugin: ${plugin.name}`);
+    console.log(`   URL: ${url}`);
+    console.log(`   Body length: ${body.length}`);
+    
     const browserCodeMatch = plugin.function.match(/\/\*\s*@browser\s*\*\/([\s\S]*?)\/\*\s*@\/browser\s*\*\//);
     let modifiedBody = body;
     
     if (browserCodeMatch) {
       const browserCode = browserCodeMatch[1].trim();
+      console.log(`🌐 [${plugin.name}] Found browser code (${browserCode.length} chars)`);
       const scriptTag = `<script>
         (function() {
           const url = "${url}";
@@ -216,6 +223,9 @@ export class MiddlewareTransport implements BareTransport {
       </script>`;
       
       modifiedBody = modifiedBody.replace('</head>', scriptTag + '</head>');
+      console.log(`✅ [${plugin.name}] Browser code injected`);
+    } else {
+      console.log(`ℹ️  [${plugin.name}] No browser code found`);
     }
     
     let serverSideCode = plugin.function;
@@ -224,18 +234,27 @@ export class MiddlewareTransport implements BareTransport {
     }
     
     if (serverSideCode.trim()) {
+      console.log(`🖥️  [${plugin.name}] Found server-side code (${serverSideCode.trim().length} chars)`);
+      console.log(`🖥️  [${plugin.name}] Server code preview: ${serverSideCode.trim().substring(0, 100)}${serverSideCode.trim().length > 100 ? '...' : ''}`);
+      
       try {
         const pluginFunction = new Function('body', 'url', 'headers', serverSideCode);
         const result = pluginFunction(modifiedBody, url, headers);
         
         if (typeof result === 'string') {
+          console.log(`✅ [${plugin.name}] Server-side code executed successfully, returned modified body (${result.length} chars)`);
           return result;
+        } else {
+          console.log(`ℹ️  [${plugin.name}] Server-side code executed but returned no string result`);
         }
       } catch (error) {
-        console.error(`Error in server-side code for plugin ${plugin.name}:`, error);
+        console.error(`❌ [${plugin.name}] Error in server-side code:`, error);
       }
+    } else {
+      console.log(`ℹ️  [${plugin.name}] No server-side code found`);
     }
     
+    console.log(`📤 [${plugin.name}] Returning body (${modifiedBody.length} chars)`);
     return modifiedBody;
   }
 
