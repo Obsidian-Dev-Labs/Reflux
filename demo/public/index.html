@@ -210,7 +210,8 @@
       "/reflux/index.mjs",
       [
         {
-          transport: "/epoxy/index.mjs",
+          //base: "/epoxy/index.mjs",
+          base: "/libcurl/index.mjs",
           wisp: "wss://gointospace.app/wisp/",
         },
       ]
@@ -269,6 +270,52 @@
         // Add all plugins sequentially to avoid race conditions
         const addPluginSequentially = async () => {
           try {
+            // helper: prefer prototype methods (called like your manual snippet) then fall back to instance methods
+            const callProto = async (method, ...args) => {
+              const moduleObj = window.RefluxAPIModule || {};
+              const RefluxAPIClassFromWindow = moduleObj.RefluxAPI || moduleObj;
+              const proto = RefluxAPIClassFromWindow && RefluxAPIClassFromWindow.prototype;
+
+              const errors = [];
+
+              // 1) Try prototype method with prototype as `this` (matches your manual snippet)
+              if (proto && typeof proto[method] === 'function') {
+                try {
+                  console.log(`Calling prototype.${method} with prototype as this`);
+                  return await proto[method].apply(proto, args);
+                } catch (err) {
+                  console.warn(`prototype.${method} failed when called on prototype:`, err);
+                  errors.push(err);
+                }
+              }
+
+              // 2) Try prototype method with the instance as `this`
+              if (proto && typeof proto[method] === 'function' && typeof api === 'object') {
+                try {
+                  console.log(`Calling prototype.${method} with instance as this`);
+                  return await proto[method].apply(api, args);
+                } catch (err) {
+                  console.warn(`prototype.${method} failed when called on instance:`, err);
+                  errors.push(err);
+                }
+              }
+
+              // 3) Try instance method directly
+              if (api && typeof api[method] === 'function') {
+                try {
+                  console.log(`Calling instance.${method}`);
+                  return await api[method](...args);
+                } catch (err) {
+                  console.warn(`instance.${method} failed:`, err);
+                  errors.push(err);
+                }
+              }
+
+              const err = new Error('No available invocation succeeded for ' + method + '. Errors: ' + errors.map(e => e && e.message).join(' | '));
+              console.error(err);
+              throw err;
+            };
+
             // Plugin 1: Example Logger
             const examplePlugin = {
               function: `
@@ -280,11 +327,11 @@
               name: 'com.example.logger',
               sites: ['*']
             };
-            
+
             console.log("Adding example plugin...");
-            await api.addPlugin(examplePlugin);
+            await callProto('addPlugin', examplePlugin);
             console.log("✅ Example logger plugin added successfully!");
-            await api.enablePlugin('com.example.logger');
+            await callProto('enablePlugin', 'com.example.logger');
             console.log("✅ Example logger plugin enabled by default!");
 
             // Plugin 2: Example.com Enhancer
@@ -323,11 +370,11 @@
               name: 'com.example.example-com-enhancer',
               sites: ['example.com', 'www.example.com']
             };
-            
+
             console.log("Adding example.com enhancer plugin...");
-            await api.addPlugin(exampleComPlugin);
+            await callProto('addPlugin', exampleComPlugin);
             console.log("✅ Example.com enhancer plugin added successfully!");
-            await api.enablePlugin('com.example.example-com-enhancer');
+            await callProto('enablePlugin', 'com.example.example-com-enhancer');
             console.log("✅ Example.com enhancer plugin enabled by default!");
 
             // Plugin 3: Google Modifier
@@ -341,11 +388,11 @@
               name: 'com.example.google-modifier',
               sites: ['google.com', 'www.google.com']
             };
-            
+
             console.log("Adding Google modifier plugin...");
-            await api.addPlugin(googlePlugin);
+            await callProto('addPlugin', googlePlugin);
             console.log("✅ Google modifier plugin added successfully!");
-            await api.enablePlugin('com.example.google-modifier');
+            await callProto('enablePlugin', 'com.example.google-modifier');
             console.log("✅ Google modifier plugin enabled by default!");
 
             // Plugin 4: GitHub Enhancer
@@ -372,9 +419,9 @@
             };
 
             console.log("Adding GitHub enhancer plugin...");
-            await api.addPlugin(githubPlugin);
+            await callProto('addPlugin', githubPlugin);
             console.log("✅ GitHub enhancer plugin added successfully!");
-            await api.enablePlugin('com.example.github-enhancer');
+            await callProto('enablePlugin', 'com.example.github-enhancer');
             console.log("✅ GitHub enhancer plugin enabled by default!");
 
             // Plugin 5: Social Media Enhancer
@@ -403,11 +450,11 @@
               name: 'com.example.social-enhancer',
               sites: [ 'www.instagram.com', 'instagram.com']
             };
-            
+
             console.log("Adding social media enhancer plugin...");
-            await api.addPlugin(socialMediaPlugin);
+            await callProto('addPlugin', socialMediaPlugin);
             console.log("✅ Social media enhancer plugin added successfully!");
-            await api.enablePlugin('com.example.social-enhancer');
+            await callProto('enablePlugin', 'com.example.social-enhancer');
             console.log("✅ Social media enhancer plugin enabled by default!");
 
             // Plugin 6: Debug Plugin
@@ -440,11 +487,11 @@
               name: 'com.debug.all-sites',
               sites: ['*']
             };
-            
+
             console.log("Adding debug plugin...");
-            await api.addPlugin(debugPlugin);
+            await callProto('addPlugin', debugPlugin);
             console.log("✅ Debug plugin added successfully!");
-            await api.enablePlugin('com.debug.all-sites');
+            await callProto('enablePlugin', 'com.debug.all-sites');
             console.log("✅ Debug plugin enabled by default!");
 
             console.log("🎉 All plugins added and enabled successfully!");

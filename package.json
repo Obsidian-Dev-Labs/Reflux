@@ -1,7 +1,7 @@
 {
   "name": "@nightnetwork/reflux",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Reflux is a powerful, universal request/response middleware engine designed for any BareMux compatible web proxy. It enables seamless script injection, request/response rewriting, and full control over the transports — all from a single, extensible interface.",
   "main": "./dist/index.mjs",
   "types": "./lib/index.d.ts",

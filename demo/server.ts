@@ -7,7 +7,9 @@ import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
 import http from "node:http";
 import { refluxPath } from '../lib/index.cjs';
+//import {refluxPath} from '@nightnetwork/reflux';
 import { scramjetPath } from '@mercuryworkshop/scramjet';
+import {libcurlPath} from '@mercuryworkshop/libcurl-transport';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,6 +27,12 @@ const server = Fastify({
 await server.register(fastifyStatic, {
     root: epoxyPath,
     prefix: '/epoxy/',
+    decorateReply: false
+});
+
+await server.register(fastifyStatic, {
+    root: libcurlPath,
+    prefix: '/libcurl/',
     decorateReply: false
 });
 

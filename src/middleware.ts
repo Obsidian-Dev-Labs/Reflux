@@ -22,7 +22,18 @@ export class MiddlewareTransport implements BareTransport {
   });
 
   constructor(private readonly inner: BareTransport) {
-    this.loadPluginsFromStorage();
+    // Avoid performing async work in the constructor. Initialization
+    // (including loading plugins) happens in init(). Log the inner
+    // transport type for debugging when wrapping transports like libcurl.
+    try {
+      const innerAny = this.inner as any;
+      console.debug('🔧 [Reflux Middleware] Constructed with inner transport:', {
+        name: innerAny?.constructor?.name || '<unknown>',
+        ready: innerAny?.ready
+      });
+    } catch (e) {
+      /* ignore logging errors */
+    }
   }
 
   public async reloadPlugins(): Promise<void> {
@@ -37,6 +48,7 @@ export class MiddlewareTransport implements BareTransport {
   }
 
   private async loadPluginsFromStorage(): Promise<void> {
+  console.debug('🔍 [Reflux Middleware] loadPluginsFromStorage() called');
     try {
       const enabledPluginIds = await this.statusStorage.getItem<string[]>('enabled') || [];
       
@@ -112,13 +124,15 @@ export class MiddlewareTransport implements BareTransport {
       onResponse: async (ctx, next) => {
         const response = await next();
         
-        const shouldRun = this.shouldPluginRunOnSite(plugin, ctx.request.remote);
-        
-        console.log(`🌐 [${plugin.name}] URL: ${ctx.request.remote.href}`);
-        console.log(`🌐 [${plugin.name}] Should run: ${shouldRun ? '✅' : '❌'}`);
-        console.log(`🌐 [${plugin.name}] Content-Type: ${response.headers["content-type"] || 'none'}`);
-        
-        if (shouldRun && response.headers["content-type"]?.includes("text/html")) {
+  const shouldRun = this.shouldPluginRunOnSite(plugin, ctx.request.remote);
+
+  const contentType = this.normalizeHeaderValue(response.headers, 'content-type');
+
+  console.log(`🌐 [${plugin.name}] URL: ${ctx.request.remote.href}`);
+  console.log(`🌐 [${plugin.name}] Should run: ${shouldRun ? '✅' : '❌'}`);
+  console.log(`🌐 [${plugin.name}] Content-Type: ${contentType || 'none'}`);
+
+  if (shouldRun && contentType?.includes("text/html")) {
           console.log(`🚀 [${plugin.name}] Executing plugin on HTML content`);
           
           if (response.body instanceof ReadableStream) {
@@ -130,7 +144,7 @@ export class MiddlewareTransport implements BareTransport {
               if (body && body.includes("</head>")) {
                 try {
                   console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
-                  const result = this.executePlugin(plugin, body, ctx.request.remote.href, response.headers);
+                  const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
                   
                   if (typeof result === 'string' && result !== body) {
                     console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
@@ -167,7 +181,7 @@ export class MiddlewareTransport implements BareTransport {
             if (body && body.includes("</head>")) {
               try {
                 console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
-                const result = this.executePlugin(plugin, body, ctx.request.remote.href, response.headers);
+                  const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
                 
                 if (typeof result === 'string' && result !== body) {
                   console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
@@ -278,6 +292,31 @@ export class MiddlewareTransport implements BareTransport {
     });
   }
 
+  // Normalize headers coming from different transports.
+  // Some transports (like libcurl) return header values as arrays.
+  private normalizeHeaders(headers: Record<string, any>): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const key of Object.keys(headers || {})) {
+      const val = headers[key];
+      if (Array.isArray(val)) {
+        out[key.toLowerCase()] = val.join(', ');
+      } else if (typeof val === 'string') {
+        out[key.toLowerCase()] = val;
+      } else if (val == null) {
+        out[key.toLowerCase()] = '';
+      } else {
+        out[key.toLowerCase()] = String(val);
+      }
+    }
+    return out;
+  }
+
+  private normalizeHeaderValue(headers: Record<string, any>, name: string): string | null {
+    const n = name.toLowerCase();
+    const normalized = this.normalizeHeaders(headers || {});
+    return normalized[n] || null;
+  }
+
   private async bodyToString(body: any): Promise<string | null> {
     if (!body) return null;
     if (typeof body === 'string') return body;
@@ -316,8 +355,19 @@ export class MiddlewareTransport implements BareTransport {
   }
 
   async init() {
-    await this.inner.init?.();
+    console.debug('🔧 [Reflux Middleware] init() - initializing inner transport (standard pattern)');
+    try {
+      // Follow the standard used across transports: call init if present.
+      await this.inner.init?.();
+    } catch (err) {
+      console.error('❌ [Reflux Middleware] Error initializing inner transport:', err);
+      throw err;
+    }
+
+    console.debug('🔧 [Reflux Middleware] inner transport initialized, loading plugins');
+    await this.loadPluginsFromStorage();
     this.ready = true;
+    console.debug('✅ [Reflux Middleware] init() complete, middleware ready');
   }
 
   async meta() {
