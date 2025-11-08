@@ -136,3 +136,4 @@ dist
 .pnp.*
  package-lock.json
  .VSCodeCounter/
+ .VSCodeCounter
