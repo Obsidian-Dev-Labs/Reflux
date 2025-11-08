@@ -32,50 +32,25 @@ export default class RefluxTransport implements BareTransport {
       ...innerOptions
     } = this.opts;
 
-    console.debug('🔧 [Reflux] Initializing transport wrapper');
-    console.debug('🔧 [Reflux] transportPath:', transportPath);
-    console.debug('🔧 [Reflux] inner options:', innerOptions);
+    console.debug('%cRF%c Initializing transport wrapper', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
 
     try {
       const mod = await import(transportPath);
       const TransportClass = mod.default;
-      console.debug('🔧 [Reflux] Imported transport module:', {
-        moduleDefaultName: TransportClass?.name || '<anonymous>',
-        module: !!mod
-      });
 
-    this.inner = new TransportClass(innerOptions);
-      console.debug('🔧 [Reflux] Inner transport instance created');
+      this.inner = new TransportClass(innerOptions);
 
       if (typeof this.inner.init === 'function') {
-        try {
-          console.debug('🔧 [Reflux] Calling inner.init()');
-          await this.inner.init();
-          console.debug('✅ [Reflux] inner.init() completed');
-        } catch (err) {
-          console.error('❌ [Reflux] Error during inner.init():', err);
-          throw err;
-        }
-      } else {
-        console.debug('ℹ️  [Reflux] inner transport has no init() method');
+        await this.inner.init();
       }
 
-      console.debug('🔧 [Reflux] Wrapping inner transport with MiddlewareTransport');
-  this.wrapped = new MiddlewareTransport(this.inner);
-      console.debug('🔧 [Reflux] MiddlewareTransport instance created');
-
-      try {
-        await this.wrapped.init();
-        console.debug('✅ [Reflux] MiddlewareTransport.init() completed');
-      } catch (err) {
-        console.error('❌ [Reflux] Error during MiddlewareTransport.init():', err);
-        throw err;
-      }
+      this.wrapped = new MiddlewareTransport(this.inner);
+      await this.wrapped.init();
 
       this.ready = true;
-      console.debug('✅ [Reflux] RefluxTransport ready = true');
+      console.debug('%cRF%c Transport ready', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     } catch (err) {
-      console.error('❌ [Reflux] Failed to initialize transport:', err);
+      console.error('%cRF%c Failed to initialize transport:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', err);
       throw err;
     }
   }

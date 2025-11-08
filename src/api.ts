@@ -65,8 +65,6 @@ export class RefluxAPI {
   private metadataStorageInstance?: LocalForage;
 
   constructor() {
-    // Create localforage instances in constructor to ensure they exist on the instance
-    // even if the class is imported/used in different module execution orders.
     try {
       this.pluginStorage = localforage.createInstance({
         name: 'Reflux',

@@ -40,14 +40,14 @@
       }
     },
     "./transport": {
+      "types": "./lib/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./lib/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./path": {
+      "types": "./lib/index.cjs.d.ts",
       "require": "./lib/index.cjs",
-      "import": "./lib/index.cjs",
-      "types": "./lib/index.cjs.d.ts"
+      "import": "./lib/index.cjs"
     }
   },
   "dependencies": {

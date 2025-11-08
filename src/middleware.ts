@@ -22,41 +22,38 @@ export class MiddlewareTransport implements BareTransport {
   });
 
   constructor(private readonly inner: BareTransport) {
-    // Avoid performing async work in the constructor. Initialization
-    // (including loading plugins) happens in init(). Log the inner
-    // transport type for debugging when wrapping transports like libcurl.
     try {
       const innerAny = this.inner as any;
-      console.debug('🔧 [Reflux Middleware] Constructed with inner transport:', {
+      console.debug('%cRF%c Constructed with inner transport:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', {
         name: innerAny?.constructor?.name || '<unknown>',
         ready: innerAny?.ready
       });
     } catch (e) {
-      /* ignore logging errors */
+      /* ignore */
     }
   }
 
   public async reloadPlugins(): Promise<void> {
-    console.log('🔄 [Reflux Middleware] Reloading plugins...');
+    console.log('%cRF%c Reloading plugins...', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     
     this.plugins.clear();
     this.middleware.clear();
     
     await this.loadPluginsFromStorage();
     
-    console.log('✅ [Reflux Middleware] Plugin reload complete');
+    console.log('%cRF%c Plugin reload complete', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
   private async loadPluginsFromStorage(): Promise<void> {
-  console.debug('🔍 [Reflux Middleware] loadPluginsFromStorage() called');
+  console.debug('%cRF%c loadPluginsFromStorage() called', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     try {
       const enabledPluginIds = await this.statusStorage.getItem<string[]>('enabled') || [];
       
       const pluginKeys = await this.pluginStorage.keys();
       
-      console.log('🔍 [Reflux Middleware] Debug Info:');
-      console.log('📋 All plugin keys in storage:', pluginKeys);
-      console.log('✅ Enabled plugin IDs:', enabledPluginIds);
+      console.log('%cRF%c Debug Info:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log('%cRF%c All plugin keys in storage:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', pluginKeys);
+      console.log('%cRF%c Enabled plugin IDs:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', enabledPluginIds);
       
       const metadataStorage = localforage.createInstance({
         name: 'Reflux',
@@ -67,13 +64,13 @@ export class MiddlewareTransport implements BareTransport {
         const pluginCode = await this.pluginStorage.getItem<string>(pluginId);
         const metadata = await metadataStorage.getItem<{sites: string[], name: string}>(pluginId);
         
-        console.log(`\n🔍 [Plugin: ${pluginId}]`);
-        console.log(`   Enabled: ${enabledPluginIds.includes(pluginId) ? '✅' : '❌'}`);
-        console.log(`   Sites: ${metadata?.sites ? JSON.stringify(metadata.sites) : "['*'] (default)"}`);
-        console.log(`   Code length: ${pluginCode ? pluginCode.length : 0} characters`);
+        console.log(`%cRF%c [Plugin: ${pluginId}]`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+        console.log(`%cRF%c    Enabled: ${enabledPluginIds.includes(pluginId)}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+        console.log(`%cRF%c    Sites: ${metadata?.sites ? JSON.stringify(metadata.sites) : "['*'] (default)"}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+        console.log(`%cRF%c    Code length: ${pluginCode ? pluginCode.length : 0} characters`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         
         if (pluginCode && pluginCode.length > 0) {
-          console.log(`   Code preview: ${pluginCode.substring(0, 100)}${pluginCode.length > 100 ? '...' : ''}`);
+          console.log(`%cRF%c    Code preview: ${pluginCode.substring(0, 100)}${pluginCode.length > 100 ? '...' : ''}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         }
         
         if (enabledPluginIds.includes(pluginId)) {
@@ -84,24 +81,24 @@ export class MiddlewareTransport implements BareTransport {
               sites: metadata?.sites || ['*']
             };
             
-            console.log(`   🚀 Loading plugin: ${pluginId}`);
+            console.log(`%cRF%c    Loading plugin: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
             await this.addPlugin(plugin);
-            console.log(`   ✅ Plugin loaded successfully: ${pluginId}`);
+            console.log(`%cRF%c    Plugin loaded successfully: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
           } else {
-            console.log(`   ❌ Plugin has no code: ${pluginId}`);
+            console.log(`%cRF%c    Plugin has no code: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
           }
         } else {
-          console.log(`   ⏭️  Skipping disabled plugin: ${pluginId}`);
+          console.log(`%cRF%c    Skipping disabled plugin: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         }
       }
       
-      console.log(`\n📊 [Reflux Middleware] Summary:`);
-      console.log(`   Total plugins in storage: ${pluginKeys.length}`);
-      console.log(`   Enabled plugins: ${enabledPluginIds.length}`);
-      console.log(`   Loaded plugins: ${this.plugins.size}`);
-      console.log(`   Active middleware: ${this.middleware.size}`);
+      console.log(`%cRF%c Summary:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Total plugins in storage: ${pluginKeys.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Enabled plugins: ${enabledPluginIds.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Loaded plugins: ${this.plugins.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Active middleware: ${this.middleware.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     } catch (error) {
-      console.error('Error loading plugins from storage:', error);
+      console.error('%cRF%c Error loading plugins from storage:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
     }
   }
 
@@ -113,9 +110,9 @@ export class MiddlewareTransport implements BareTransport {
   }
 
   private async addPlugin(plugin: RefluxPlugin): Promise<void> {
-    console.log(`🔧 [addPlugin] Adding plugin: ${plugin.name}`);
-    console.log(`   Sites: ${JSON.stringify(plugin.sites)}`);
-    console.log(`   Function length: ${plugin.function.length} characters`);
+    console.log(`%cRF%c Adding plugin: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+    console.log(`%cRF%c    Sites: ${JSON.stringify(plugin.sites)}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+    console.log(`%cRF%c    Function length: ${plugin.function.length} characters`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     
     this.plugins.set(plugin.name, plugin);
 
@@ -128,12 +125,12 @@ export class MiddlewareTransport implements BareTransport {
 
   const contentType = this.normalizeHeaderValue(response.headers, 'content-type');
 
-  console.log(`🌐 [${plugin.name}] URL: ${ctx.request.remote.href}`);
-  console.log(`🌐 [${plugin.name}] Should run: ${shouldRun ? '✅' : '❌'}`);
-  console.log(`🌐 [${plugin.name}] Content-Type: ${contentType || 'none'}`);
+  console.log(`%cRF%c [${plugin.name}] URL: ${ctx.request.remote.href}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+  console.log(`%cRF%c [${plugin.name}] Should run: ${shouldRun}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+  console.log(`%cRF%c [${plugin.name}] Content-Type: ${contentType || 'none'}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
 
   if (shouldRun && contentType?.includes("text/html")) {
-          console.log(`🚀 [${plugin.name}] Executing plugin on HTML content`);
+          console.log(`%cRF%c [${plugin.name}] Executing plugin on HTML content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
           
           if (response.body instanceof ReadableStream) {
             try {
@@ -143,11 +140,11 @@ export class MiddlewareTransport implements BareTransport {
               
               if (body && body.includes("</head>")) {
                 try {
-                  console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
+                  console.log(`%cRF%c [${plugin.name}] Processing HTML body (${body.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                   const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
                   
                   if (typeof result === 'string' && result !== body) {
-                    console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
+                    console.log(`%cRF%c [${plugin.name}] Plugin modified content (${result.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                     return {
                       ...response,
                       body: result,
@@ -157,13 +154,13 @@ export class MiddlewareTransport implements BareTransport {
                       }
                     };
                   } else {
-                    console.log(`ℹ️  [${plugin.name}] Plugin returned unchanged content`);
+                    console.log(`%cRF%c [${plugin.name}] Plugin returned unchanged content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                   }
                 } catch (error) {
-                  console.error(`❌ [${plugin.name}] Error executing plugin:`, error);
+                  console.error(`%cRF%c [${plugin.name}] Error executing plugin:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
                 }
               } else {
-                console.log(`ℹ️  [${plugin.name}] No </head> tag found in content`);
+                console.log(`%cRF%c [${plugin.name}] No </head> tag found in content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
               }
               
               return {
@@ -172,7 +169,7 @@ export class MiddlewareTransport implements BareTransport {
               };
               
             } catch (error) {
-              console.error(`❌ [${plugin.name}] Error processing stream:`, error);
+              console.error(`%cRF%c [${plugin.name}] Error processing stream:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
               return response;
             }
           } else {
@@ -180,11 +177,11 @@ export class MiddlewareTransport implements BareTransport {
             
             if (body && body.includes("</head>")) {
               try {
-                console.log(`📝 [${plugin.name}] Processing HTML body (${body.length} chars)`);
+                console.log(`%cRF%c [${plugin.name}] Processing HTML body (${body.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                   const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
                 
                 if (typeof result === 'string' && result !== body) {
-                  console.log(`✅ [${plugin.name}] Plugin modified content (${result.length} chars)`);
+                  console.log(`%cRF%c [${plugin.name}] Plugin modified content (${result.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                   return {
                     ...response,
                     body: result,
@@ -194,19 +191,19 @@ export class MiddlewareTransport implements BareTransport {
                     }
                   };
                 } else {
-                  console.log(`ℹ️  [${plugin.name}] Plugin returned unchanged content`);
+                  console.log(`%cRF%c [${plugin.name}] Plugin returned unchanged content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
                 }
               } catch (error) {
-                console.error(`❌ [${plugin.name}] Error executing plugin:`, error);
+                console.error(`%cRF%c [${plugin.name}] Error executing plugin:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
               }
             } else {
-              console.log(`ℹ️  [${plugin.name}] No </head> tag found in content`);
+              console.log(`%cRF%c [${plugin.name}] No </head> tag found in content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
             }
           }
         } else if (!shouldRun) {
-          console.log(`⏭️  [${plugin.name}] Skipping - site not in target list`);
+          console.log(`%cRF%c [${plugin.name}] Skipping - site not in target list`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         } else if (!response.headers["content-type"]?.includes("text/html")) {
-          console.log(`⏭️  [${plugin.name}] Skipping - not HTML content`);
+          console.log(`%cRF%c [${plugin.name}] Skipping - not HTML content`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         }
         
         return response;
@@ -214,20 +211,20 @@ export class MiddlewareTransport implements BareTransport {
     };
 
     this.middleware.set(plugin.name, pluginMiddleware);
-    console.log(`✅ [addPlugin] Plugin middleware registered: ${plugin.name}`);
+    console.log(`%cRF%c Plugin middleware registered: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
   private executePlugin(plugin: RefluxPlugin, body: string, url: string, headers: Record<string, string>): string {
-    console.log(`🔧 [executePlugin] Running plugin: ${plugin.name}`);
-    console.log(`   URL: ${url}`);
-    console.log(`   Body length: ${body.length}`);
+    console.log(`%cRF%c Running plugin: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+    console.log(`%cRF%c    URL: ${url}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+    console.log(`%cRF%c    Body length: ${body.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     
     const browserCodeMatch = plugin.function.match(/\/\*\s*@browser\s*\*\/([\s\S]*?)\/\*\s*@\/browser\s*\*\//);
     let modifiedBody = body;
     
     if (browserCodeMatch) {
       const browserCode = browserCodeMatch[1].trim();
-      console.log(`🌐 [${plugin.name}] Found browser code (${browserCode.length} chars)`);
+      console.log(`%cRF%c [${plugin.name}] Found browser code (${browserCode.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
       const scriptTag = `<script>
         (function() {
           const url = "${url}";
@@ -237,9 +234,9 @@ export class MiddlewareTransport implements BareTransport {
       </script>`;
       
       modifiedBody = modifiedBody.replace('</head>', scriptTag + '</head>');
-      console.log(`✅ [${plugin.name}] Browser code injected`);
+      console.log(`%cRF%c [${plugin.name}] Browser code injected`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     } else {
-      console.log(`ℹ️  [${plugin.name}] No browser code found`);
+      console.log(`%cRF%c [${plugin.name}] No browser code found`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     }
     
     let serverSideCode = plugin.function;
@@ -248,27 +245,27 @@ export class MiddlewareTransport implements BareTransport {
     }
     
     if (serverSideCode.trim()) {
-      console.log(`🖥️  [${plugin.name}] Found server-side code (${serverSideCode.trim().length} chars)`);
-      console.log(`🖥️  [${plugin.name}] Server code preview: ${serverSideCode.trim().substring(0, 100)}${serverSideCode.trim().length > 100 ? '...' : ''}`);
+      console.log(`%cRF%c [${plugin.name}] Found server-side code (${serverSideCode.trim().length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c [${plugin.name}] Server code preview: ${serverSideCode.trim().substring(0, 100)}${serverSideCode.trim().length > 100 ? '...' : ''}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
       
       try {
         const pluginFunction = new Function('body', 'url', 'headers', serverSideCode);
         const result = pluginFunction(modifiedBody, url, headers);
         
         if (typeof result === 'string') {
-          console.log(`✅ [${plugin.name}] Server-side code executed successfully, returned modified body (${result.length} chars)`);
+          console.log(`%cRF%c [${plugin.name}] Server-side code executed successfully, returned modified body (${result.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
           return result;
         } else {
-          console.log(`ℹ️  [${plugin.name}] Server-side code executed but returned no string result`);
+          console.log(`%cRF%c [${plugin.name}] Server-side code executed but returned no string result`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
         }
       } catch (error) {
-        console.error(`❌ [${plugin.name}] Error in server-side code:`, error);
+        console.error(`%cRF%c [${plugin.name}] Error in server-side code:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
       }
     } else {
-      console.log(`ℹ️  [${plugin.name}] No server-side code found`);
+      console.log(`%cRF%c [${plugin.name}] No server-side code found`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     }
     
-    console.log(`📤 [${plugin.name}] Returning body (${modifiedBody.length} chars)`);
+    console.log(`%cRF%c [${plugin.name}] Returning body (${modifiedBody.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     return modifiedBody;
   }
 
@@ -292,8 +289,6 @@ export class MiddlewareTransport implements BareTransport {
     });
   }
 
-  // Normalize headers coming from different transports.
-  // Some transports (like libcurl) return header values as arrays.
   private normalizeHeaders(headers: Record<string, any>): Record<string, string> {
     const out: Record<string, string> = {};
     for (const key of Object.keys(headers || {})) {
@@ -355,19 +350,18 @@ export class MiddlewareTransport implements BareTransport {
   }
 
   async init() {
-    console.debug('🔧 [Reflux Middleware] init() - initializing inner transport (standard pattern)');
+    console.debug('%cRF%c init() - initializing inner transport', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     try {
-      // Follow the standard used across transports: call init if present.
       await this.inner.init?.();
     } catch (err) {
-      console.error('❌ [Reflux Middleware] Error initializing inner transport:', err);
+      console.error('%cRF%c Error initializing inner transport:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', err);
       throw err;
     }
 
-    console.debug('🔧 [Reflux Middleware] inner transport initialized, loading plugins');
+    console.debug('%cRF%c inner transport initialized, loading plugins', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     await this.loadPluginsFromStorage();
     this.ready = true;
-    console.debug('✅ [Reflux Middleware] init() complete, middleware ready');
+    console.debug('%cRF%c init() complete, middleware ready', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
   async meta() {
@@ -429,7 +423,7 @@ export class MiddlewareTransport implements BareTransport {
             currentContext = result;
           }
         } catch (error) {
-          console.error(`Error in request middleware ${middleware.id}:`, error);
+          console.error('%cRF%c Error in request middleware:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', `${middleware.id}:`, error);
         }
       }
     }
@@ -477,7 +471,7 @@ export class MiddlewareTransport implements BareTransport {
             };
           }
         } catch (error) {
-          console.error(`Error in response middleware ${middleware.id}:`, error);
+          console.error('%cRF%c Error in response middleware:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', `${middleware.id}:`, error);
         }
       }
     }
@@ -533,7 +527,7 @@ export class MiddlewareTransport implements BareTransport {
             processedData = result;
           }
         } catch (error) {
-          console.error(`Error in WebSocket middleware ${middleware.id}:`, error);
+          console.error('%cRF%c Error in WebSocket middleware:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', `${middleware.id}:`, error);
         }
       }
     }
