@@ -2,13 +2,14 @@
 
 Reflux is a powerful, universal request/response middleware engine designed for any BareMux compatible web proxy. It features a dynamic plugin system that allows you to load and execute custom JavaScript code on specific websites.
 
+Reflux is a plug-and-play middleware system for Bare-Mux. It allows developers to define custom handlers that intercept and modify requests and responses at a transport level, so you can run middleware before it even hits a proxy, and after it gets fetched by the upstream transport.
+
 ## Features
 
-- **Dynamic Plugin System**: Load and execute custom plugins on specific sites or globally
-- **Request/Response Middleware**: Intercept and modify HTTP requests and responses
-- **WebSocket Support**: Middleware support for WebSocket connections
-- **Site-Specific Targeting**: Run plugins only on specified domains with pattern matching
-- **Real-time Control**: Add, remove, and manage plugins dynamically
+- **Hot-swappable plugins**: Load and execute custom plugins on specific sites or globally
+- **Powerful middleware**: Intercept and modify HTTP requests destined for transports and responses coming back from them
+- **WebSocket Connections**: Support for modifying WebSocket connections
+- **Scoped plugins**: Run plugins only on specified domains, including pattern-matched domains
 
 ## Documentation
 
@@ -24,9 +25,13 @@ Reflux is a powerful, universal request/response middleware engine designed for 
 
 ## Quick Start
 
+Proxy developers can get started right away by installing the package:
+
 ```bash
 npm install @nightnetwork/reflux
 ```
+
+...and swapping out a few lines in your Bare Mux connection. Reflux works by being the transport that Bare Mux sees, but then uses the transport of your choice underneath.
 
 ```javascript
 import { BareMuxConnection } from "@mercuryworkshop/bare-mux";
@@ -40,10 +45,10 @@ await connection.setTransport("/reflux/index.mjs", [{
 }]);
 
 // Create Reflux API instance
-const api = new RefluxAPI();
+const reflux = new RefluxAPI();
 
 // Add a plugin
-await api.addPlugin({
+await reflux.addPlugin({
   name: "my-plugin",
   sites: ["example.com"],
   function: `
@@ -54,10 +59,10 @@ await api.addPlugin({
 });
 
 // Enable the plugin
-await api.enablePlugin("my-plugin");
+await reflux.enablePlugin("my-plugin");
 ```
 
-## Use Cases
+## Use cases
 
 - **HTML Modification**: Inject scripts, modify content, add custom UI
 - **Request Interception**: Modify headers, URLs, request bodies
@@ -69,33 +74,11 @@ await api.enablePlugin("my-plugin");
 - **Dark Mode**: Apply custom themes to any website
 
 ## Architecture
+Reflux is a transport itself that you provide to Bare Mux. When a request hits Reflux, it runs the middleware for each enabled plugin, then passes the potentially modified requests to the configured upstream transport, like Epoxy or Libcurl. After the response comes back, Reflux runs any response-modifying middleware, then finally returns it to the proxy for rewriting.
 
-```
-┌─────────────────┐
-│   Application   │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    BareMux      │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│     Reflux      │ ◄── Plugin System
-│   Middleware    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Base Transport  │
-│ (Epoxy/Libcurl) │
-└─────────────────┘
-```
+## Development and building locally
 
-## Development
-
-This repository uses Bun, but any package manager will work.
+This repository uses Bun for package management, but any package manager will work.
 
 ```bash
 # Install Bun 
@@ -115,15 +98,7 @@ bun demo
 
 ## License
 
-See [LICENSE](./LICENSE) file for details.
+Reflux is licensed under the Apache 2.0 license. See the [LICENSE](./LICENSE) file for details.
 
 ## Contributing
-
 Contributions are welcome! Please read the documentation before submitting pull requests.
-
-## Links
-
-- [Documentation](./docs/README.md)
-- [GitHub Repository](https://github.com/Obsidian-Dev-Labs/Reflux)
-- [NPM Package](https://www.npmjs.com/package/@nightnetwork/reflux)
-
