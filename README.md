@@ -95,16 +95,22 @@ await api.enablePlugin("my-plugin");
 
 ## Development
 
+This repository uses Bun, but any package manager will work.
+
 ```bash
+# Install Bun 
+curl -fsSl https://bun.sh/install | bash # Linux/macOS
+powershell -c "irm bun.sh/install.ps1 | iex" # Windows
+
 # Clone the repository
 git clone https://github.com/Obsidian-Dev-Labs/Reflux.git
 cd Reflux
 
 # Install dependencies
-npm install
+bun install
 
 # Run the demo
-npm run demo
+bun demo
 ```
 
 ## License
