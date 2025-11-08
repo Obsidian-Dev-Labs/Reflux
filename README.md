@@ -95,6 +95,8 @@ await api.enablePlugin("my-plugin");
 
 ## Development
 
+This repository uses Bun, but any package manager will work.
+
 ```bash
 # Install Bun 
 curl -fsSl https://bun.sh/install | bash # Linux/macOS
