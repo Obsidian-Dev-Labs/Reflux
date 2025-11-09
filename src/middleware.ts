@@ -10,20 +10,20 @@ import localforage from "localforage";
 
 export class MiddlewareTransport implements BareTransport {
   ready = false;
-  private middleware: Map<string, MiddlewareFunction> = new Map();
-  private plugins: Map<string, RefluxPlugin> = new Map();
-  private pluginStorage = localforage.createInstance({
+  #middleware: Map<string, MiddlewareFunction> = new Map();
+  #plugins: Map<string, RefluxPlugin> = new Map();
+  #pluginStorage = localforage.createInstance({
     name: 'Reflux',
     storeName: 'plugins'
   });
-  private statusStorage = localforage.createInstance({
+  #statusStorage = localforage.createInstance({
     name: 'Reflux',
     storeName: 'status'
   });
-
-  constructor(private readonly inner: BareTransport) {
+readonly #inner: BareTransport;
+  constructor(inner: BareTransport) {
     try {
-      const innerAny = this.inner as any;
+      const innerAny = (this.#inner = inner) as any;
       console.debug('%cRF%c Constructed with inner transport:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', {
         name: innerAny?.constructor?.name || '<unknown>',
         ready: innerAny?.ready
@@ -36,20 +36,20 @@ export class MiddlewareTransport implements BareTransport {
   public async reloadPlugins(): Promise<void> {
     console.log('%cRF%c Reloading plugins...', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     
-    this.plugins.clear();
-    this.middleware.clear();
+    this.#plugins.clear();
+    this.#middleware.clear();
     
-    await this.loadPluginsFromStorage();
+    await this.#loadPluginsFromStorage();
     
     console.log('%cRF%c Plugin reload complete', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
-  private async loadPluginsFromStorage(): Promise<void> {
+  async #loadPluginsFromStorage(): Promise<void> {
   console.debug('%cRF%c loadPluginsFromStorage() called', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     try {
-      const enabledPluginIds = await this.statusStorage.getItem<string[]>('enabled') || [];
+      const enabledPluginIds = await this.#statusStorage.getItem<string[]>('enabled') || [];
       
-      const pluginKeys = await this.pluginStorage.keys();
+      const pluginKeys = await this.#pluginStorage.keys();
       
       console.log('%cRF%c Debug Info:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
       console.log('%cRF%c All plugin keys in storage:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', pluginKeys);
@@ -61,7 +61,7 @@ export class MiddlewareTransport implements BareTransport {
       });
       
       for (const pluginId of pluginKeys) {
-        const pluginCode = await this.pluginStorage.getItem<string>(pluginId);
+        const pluginCode = await this.#pluginStorage.getItem<string>(pluginId);
         const metadata = await metadataStorage.getItem<{sites: string[], name: string}>(pluginId);
         
         console.log(`%cRF%c [Plugin: ${pluginId}]`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -82,7 +82,7 @@ export class MiddlewareTransport implements BareTransport {
             };
             
             console.log(`%cRF%c    Loading plugin: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-            await this.addPlugin(plugin);
+            await this.#addPlugin(plugin);
             console.log(`%cRF%c    Plugin loaded successfully: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
           } else {
             console.log(`%cRF%c    Plugin has no code: ${pluginId}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -95,35 +95,35 @@ export class MiddlewareTransport implements BareTransport {
       console.log(`%cRF%c Summary:`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
       console.log(`%cRF%c    Total plugins in storage: ${pluginKeys.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
       console.log(`%cRF%c    Enabled plugins: ${enabledPluginIds.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-      console.log(`%cRF%c    Loaded plugins: ${this.plugins.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-      console.log(`%cRF%c    Active middleware: ${this.middleware.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Loaded plugins: ${this.#plugins.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
+      console.log(`%cRF%c    Active middleware: ${this.#middleware.size}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     } catch (error) {
       console.error('%cRF%c Error loading plugins from storage:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', error);
     }
   }
 
-  private isMiddlewareEnabled(middleware: MiddlewareFunction): boolean {
+  #isMiddlewareEnabled(middleware: MiddlewareFunction): boolean {
     if (typeof middleware.enabled === 'function') {
       return middleware.enabled();
     }
     return middleware.enabled !== false;
   }
 
-  private async addPlugin(plugin: RefluxPlugin): Promise<void> {
+  async #addPlugin(plugin: RefluxPlugin): Promise<void> {
     console.log(`%cRF%c Adding plugin: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     console.log(`%cRF%c    Sites: ${JSON.stringify(plugin.sites)}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     console.log(`%cRF%c    Function length: ${plugin.function.length} characters`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     
-    this.plugins.set(plugin.name, plugin);
+    this.#plugins.set(plugin.name, plugin);
 
     const pluginMiddleware: MiddlewareFunction = {
       id: plugin.name,
       onResponse: async (ctx, next) => {
         const response = await next();
         
-  const shouldRun = this.shouldPluginRunOnSite(plugin, ctx.request.remote);
+  const shouldRun = this.#shouldPluginRunOnSite(plugin, ctx.request.remote);
 
-  const contentType = this.normalizeHeaderValue(response.headers, 'content-type');
+  const contentType = this.#normalizeHeaderValue(response.headers, 'content-type');
 
   console.log(`%cRF%c [${plugin.name}] URL: ${ctx.request.remote.href}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   console.log(`%cRF%c [${plugin.name}] Should run: ${shouldRun}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -136,12 +136,12 @@ export class MiddlewareTransport implements BareTransport {
             try {
               const [stream1, stream2] = response.body.tee();
               
-              const body = await this.streamToString(stream1);
+              const body = await this.#streamToString(stream1);
               
               if (body && body.includes("</head>")) {
                 try {
                   console.log(`%cRF%c [${plugin.name}] Processing HTML body (${body.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-                  const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
+                  const result = this.#executePlugin(plugin, body, ctx.request.remote.href, this.#normalizeHeaders(response.headers));
                   
                   if (typeof result === 'string' && result !== body) {
                     console.log(`%cRF%c [${plugin.name}] Plugin modified content (${result.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -173,12 +173,12 @@ export class MiddlewareTransport implements BareTransport {
               return response;
             }
           } else {
-            const body = await this.bodyToString(response.body);
+            const body = await this.#bodyToString(response.body);
             
             if (body && body.includes("</head>")) {
               try {
                 console.log(`%cRF%c [${plugin.name}] Processing HTML body (${body.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-                  const result = this.executePlugin(plugin, body, ctx.request.remote.href, this.normalizeHeaders(response.headers));
+                  const result = this.#executePlugin(plugin, body, ctx.request.remote.href, this.#normalizeHeaders(response.headers));
                 
                 if (typeof result === 'string' && result !== body) {
                   console.log(`%cRF%c [${plugin.name}] Plugin modified content (${result.length} chars)`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -210,11 +210,11 @@ export class MiddlewareTransport implements BareTransport {
       }
     };
 
-    this.middleware.set(plugin.name, pluginMiddleware);
+    this.#middleware.set(plugin.name, pluginMiddleware);
     console.log(`%cRF%c Plugin middleware registered: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
-  private executePlugin(plugin: RefluxPlugin, body: string, url: string, headers: Record<string, string>): string {
+  #executePlugin(plugin: RefluxPlugin, body: string, url: string, headers: Record<string, string>): string {
     console.log(`%cRF%c Running plugin: ${plugin.name}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     console.log(`%cRF%c    URL: ${url}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     console.log(`%cRF%c    Body length: ${body.length}`, 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -269,12 +269,12 @@ export class MiddlewareTransport implements BareTransport {
     return modifiedBody;
   }
 
-  private removePlugin(name: string): void {
-    this.plugins.delete(name);
-    this.middleware.delete(name);
+  #removePlugin(name: string): void {
+    this.#plugins.delete(name);
+    this.#middleware.delete(name);
   }
 
-  private shouldPluginRunOnSite(plugin: RefluxPlugin, url: URL): boolean {
+  #shouldPluginRunOnSite(plugin: RefluxPlugin, url: URL): boolean {
     if (plugin.sites.includes('*')) {
       return true;
     }
@@ -289,7 +289,7 @@ export class MiddlewareTransport implements BareTransport {
     });
   }
 
-  private normalizeHeaders(headers: Record<string, any>): Record<string, string> {
+  #normalizeHeaders(headers: Record<string, any>): Record<string, string> {
     const out: Record<string, string> = {};
     for (const key of Object.keys(headers || {})) {
       const val = headers[key];
@@ -306,24 +306,24 @@ export class MiddlewareTransport implements BareTransport {
     return out;
   }
 
-  private normalizeHeaderValue(headers: Record<string, any>, name: string): string | null {
+  #normalizeHeaderValue(headers: Record<string, any>, name: string): string | null {
     const n = name.toLowerCase();
-    const normalized = this.normalizeHeaders(headers || {});
+    const normalized = this.#normalizeHeaders(headers || {});
     return normalized[n] || null;
   }
 
-  private async bodyToString(body: any): Promise<string | null> {
+  async #bodyToString(body: any): Promise<string | null> {
     if (!body) return null;
     if (typeof body === 'string') return body;
     if (body instanceof Blob) return await body.text();
     if (body instanceof ArrayBuffer) return new TextDecoder().decode(body);
     if (body instanceof ReadableStream) {
-      return await this.streamToString(body);
+      return await this.#streamToString(body);
     }
     return String(body);
   }
 
-  private async streamToString(stream: ReadableStream): Promise<string> {
+  async #streamToString(stream: ReadableStream): Promise<string> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let totalLength = 0;
@@ -352,20 +352,20 @@ export class MiddlewareTransport implements BareTransport {
   async init() {
     console.debug('%cRF%c init() - initializing inner transport', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
     try {
-      await this.inner.init?.();
+      await this.#inner.init?.();
     } catch (err) {
       console.error('%cRF%c Error initializing inner transport:', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '', err);
       throw err;
     }
 
     console.debug('%cRF%c inner transport initialized, loading plugins', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
-    await this.loadPluginsFromStorage();
+    await this.#loadPluginsFromStorage();
     this.ready = true;
     console.debug('%cRF%c init() complete, middleware ready', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
   }
 
   async meta() {
-    return this.inner.meta?.();
+    return this.#inner.meta?.();
   }
 
   async request(
@@ -383,9 +383,9 @@ export class MiddlewareTransport implements BareTransport {
       signal
     };
 
-    const processedRequest = await this.processRequestMiddleware(requestContext);
+    const processedRequest = await this.#processRequestMiddleware(requestContext);
     
-    const response = await this.inner.request(
+    const response = await this.#inner.request(
       processedRequest.remote,
       processedRequest.method,
       processedRequest.body,
@@ -397,16 +397,16 @@ export class MiddlewareTransport implements BareTransport {
       request: processedRequest
     };
 
-    const processedResponse = await this.processResponseMiddleware(responseContext, response);
+    const processedResponse = await this.#processResponseMiddleware(responseContext, response);
     
     return processedResponse;
   }
 
-  private async processRequestMiddleware(initialContext: RequestContext): Promise<RequestContext> {
+  async #processRequestMiddleware(initialContext: RequestContext): Promise<RequestContext> {
     let currentContext = { ...initialContext };
     
-    const enabledMiddleware = Array.from(this.middleware.values())
-      .filter(middleware => this.isMiddlewareEnabled(middleware) && middleware.onRequest);
+    const enabledMiddleware = Array.from(this.#middleware.values())
+      .filter(middleware => this.#isMiddlewareEnabled(middleware) && middleware.onRequest);
 
     for (const middleware of enabledMiddleware) {
       if (middleware.onRequest) {
@@ -431,14 +431,14 @@ export class MiddlewareTransport implements BareTransport {
     return currentContext;
   }
 
-  private async processResponseMiddleware(
+  async #processResponseMiddleware(
     context: ResponseContext, 
     initialResponse: BareTransferrableResponse
   ): Promise<BareTransferrableResponse> {
     let currentResponse: BareTransferrableResponse = { ...initialResponse };
     
-    const enabledMiddleware = Array.from(this.middleware.values())
-      .filter(middleware => this.isMiddlewareEnabled(middleware) && middleware.onResponse);
+    const enabledMiddleware = Array.from(this.#middleware.values())
+      .filter(middleware => this.#isMiddlewareEnabled(middleware) && middleware.onResponse);
 
     for (const middleware of enabledMiddleware) {
       if (middleware.onResponse) {
@@ -488,13 +488,13 @@ export class MiddlewareTransport implements BareTransport {
     onclose: (code: number, reason: string) => void,
     onerror: (error: string) => void
   ): [(data: Blob | ArrayBuffer | string) => void, (code: number, reason: string) => void] {
-    const [send, close] = this.inner.connect(
+    const [send, close] = this.#inner.connect(
       url,
       protocols,
       requestHeaders,
       onopen,
       (data: Blob | ArrayBuffer | string) => {
-        this.processWebSocketMessage(data, "receive").then(processedData => {
+        this.#processWebSocketMessage(data, "receive").then(processedData => {
           onmessage(processedData);
         });
       },
@@ -503,21 +503,21 @@ export class MiddlewareTransport implements BareTransport {
     );
 
     const wrappedSend = async (data: Blob | ArrayBuffer | string) => {
-      const processedData = await this.processWebSocketMessage(data, "send");
+      const processedData = await this.#processWebSocketMessage(data, "send");
       send(processedData);
     };
 
     return [wrappedSend, close];
   }
 
-  private async processWebSocketMessage(
+  async #processWebSocketMessage(
     data: Blob | ArrayBuffer | string, 
     direction: "send" | "receive"
   ): Promise<Blob | ArrayBuffer | string> {
     let processedData = data;
     
-    const enabledMiddleware = Array.from(this.middleware.values())
-      .filter(middleware => this.isMiddlewareEnabled(middleware) && middleware.modifyWebSocketMessage);
+    const enabledMiddleware = Array.from(this.#middleware.values())
+      .filter(middleware => this.#isMiddlewareEnabled(middleware) && middleware.modifyWebSocketMessage);
 
     for (const middleware of enabledMiddleware) {
       if (middleware.modifyWebSocketMessage) {

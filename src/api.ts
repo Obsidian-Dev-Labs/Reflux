@@ -53,24 +53,24 @@ const REFLUX_HEADER = "reflux-middleware";
 const REFLUX_VERSION = "1.0.0";
 
 export class RefluxAPI {
-  private pluginStorage = localforage.createInstance({
+  #pluginStorage = localforage.createInstance({
     name: 'Reflux',
     storeName: 'plugins'
   });
-  private statusStorage = localforage.createInstance({
+  #statusStorage = localforage.createInstance({
     name: 'Reflux',
     storeName: 'status'
   });
 
-  private metadataStorageInstance?: LocalForage;
+  #metadataStorageInstance?: LocalForage;
 
   constructor() {
     try {
-      this.pluginStorage = localforage.createInstance({
+      this.#pluginStorage = localforage.createInstance({
         name: 'Reflux',
         storeName: 'plugins'
       });
-      this.statusStorage = localforage.createInstance({
+      this.#statusStorage = localforage.createInstance({
         name: 'Reflux',
         storeName: 'status'
       });
@@ -79,26 +79,26 @@ export class RefluxAPI {
     }
   }
 
-  private ensureStorages(): void {
-    if (!this.pluginStorage) {
-      this.pluginStorage = localforage.createInstance({ name: 'Reflux', storeName: 'plugins' });
+  #ensureStorages(): void {
+    if (!this.#pluginStorage) {
+      this.#pluginStorage = localforage.createInstance({ name: 'Reflux', storeName: 'plugins' });
     }
-    if (!this.statusStorage) {
-      this.statusStorage = localforage.createInstance({ name: 'Reflux', storeName: 'status' });
+    if (!this.#statusStorage) {
+      this.#statusStorage = localforage.createInstance({ name: 'Reflux', storeName: 'status' });
     }
   }
 
   async addPlugin(plugin: RefluxPlugin): Promise<void> {
     try {
-      this.ensureStorages();
-      if (!this.pluginStorage) throw new Error('pluginStorage unavailable');
-      await this.pluginStorage.setItem(plugin.name, plugin.function);
+      this.#ensureStorages();
+      if (!this.#pluginStorage) throw new Error('pluginStorage unavailable');
+      await this.#pluginStorage.setItem(plugin.name, plugin.function);
       
       const metadataStorage = localforage.createInstance({
         name: 'Reflux',
         storeName: 'pluginMetadata'
       });
-      
+      #
       await metadataStorage.setItem(plugin.name, {
         sites: plugin.sites,
         name: plugin.name
@@ -113,9 +113,9 @@ export class RefluxAPI {
 
   async removePlugin(name: string): Promise<void> {
     try {
-  this.ensureStorages();
-  if (!this.pluginStorage) throw new Error('pluginStorage unavailable');
-  await this.pluginStorage.removeItem(name);
+  this.#ensureStorages();
+  if (!this.#pluginStorage) throw new Error('pluginStorage unavailable');
+  await this.#pluginStorage.removeItem(name);
       
       const metadataStorage = localforage.createInstance({
         name: 'Reflux',
@@ -123,9 +123,9 @@ export class RefluxAPI {
       });
       await metadataStorage.removeItem(name);
       
-      const enabledPlugins = await this.statusStorage.getItem<string[]>('enabled') || [];
+      const enabledPlugins = await this.#statusStorage.getItem<string[]>('enabled') || [];
       const updatedEnabled = enabledPlugins.filter(id => id !== name);
-      await this.statusStorage.setItem('enabled', updatedEnabled);
+      await this.#statusStorage.setItem('enabled', updatedEnabled);
       
       console.log(`Plugin ${name} removed successfully`);
     } catch (error) {
@@ -136,13 +136,13 @@ export class RefluxAPI {
 
   async enablePlugin(name: string): Promise<void> {
     try {
-  this.ensureStorages();
-  if (!this.statusStorage) throw new Error('statusStorage unavailable');
-  const enabledPlugins = await this.statusStorage.getItem<string[]>('enabled') || [];
+  this.#ensureStorages();
+  if (!this.#statusStorage) throw new Error('statusStorage unavailable');
+  const enabledPlugins = await this.#statusStorage.getItem<string[]>('enabled') || [];
       
       if (!enabledPlugins.includes(name)) {
         enabledPlugins.push(name);
-        await this.statusStorage.setItem('enabled', enabledPlugins);
+        await this.#statusStorage.setItem('enabled', enabledPlugins);
       }
       
       console.log(`Plugin ${name} enabled successfully`);
@@ -154,11 +154,11 @@ export class RefluxAPI {
 
   async disablePlugin(name: string): Promise<void> {
     try {
-  this.ensureStorages();
-  if (!this.statusStorage) throw new Error('statusStorage unavailable');
-  const enabledPlugins = await this.statusStorage.getItem<string[]>('enabled') || [];
+  this.#ensureStorages();
+  if (!this.#statusStorage) throw new Error('statusStorage unavailable');
+  const enabledPlugins = await this.#statusStorage.getItem<string[]>('enabled') || [];
       const updatedEnabled = enabledPlugins.filter(id => id !== name);
-      await this.statusStorage.setItem('enabled', updatedEnabled);
+      await this.#statusStorage.setItem('enabled', updatedEnabled);
       
       console.log(`Plugin ${name} disabled successfully`);
     } catch (error) {
@@ -169,10 +169,10 @@ export class RefluxAPI {
 
   async listPlugins(): Promise<Array<{ name: string; sites: string[]; enabled: boolean; function: string }>> {
     try {
-  this.ensureStorages();
-  if (!this.pluginStorage || !this.statusStorage) throw new Error('storages unavailable');
-  const pluginKeys = await this.pluginStorage.keys();
-  const enabledPlugins = await this.statusStorage.getItem<string[]>('enabled') || [];
+  this.#ensureStorages();
+  if (!this.#pluginStorage || !this.#statusStorage) throw new Error('storages unavailable');
+  const pluginKeys = await this.#pluginStorage.keys();
+  const enabledPlugins = await this.#statusStorage.getItem<string[]>('enabled') || [];
       const metadataStorage = localforage.createInstance({
         name: 'Reflux',
         storeName: 'pluginMetadata'
@@ -181,7 +181,7 @@ export class RefluxAPI {
       const plugins: Array<{ name: string; sites: string[]; enabled: boolean; function: string }> = [];
       
       for (const key of pluginKeys) {
-        const pluginCode = await this.pluginStorage.getItem<string>(key);
+        const pluginCode = await this.#pluginStorage.getItem<string>(key);
         const metadata = await metadataStorage.getItem<{sites: string[], name: string}>(key);
         
         if (pluginCode) {
@@ -203,9 +203,9 @@ export class RefluxAPI {
 
   async getEnabledPlugins(): Promise<string[]> {
     try {
-  this.ensureStorages();
-  if (!this.statusStorage) return [];
-  return await this.statusStorage.getItem<string[]>('enabled') || [];
+  this.#ensureStorages();
+  if (!this.#statusStorage) return [];
+  return await this.#statusStorage.getItem<string[]>('enabled') || [];
     } catch (error) {
       console.error('Error getting enabled plugins:', error);
       return [];
