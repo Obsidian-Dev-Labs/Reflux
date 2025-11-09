@@ -15,13 +15,16 @@ export type RefluxOptions = {
 export default class RefluxTransport implements BareTransport {
   ready = false;
 
-  private inner!: BareTransport;
-  private wrapped!: MiddlewareTransport;
+  #inner!: BareTransport;
+  #wrapped!: MiddlewareTransport;
+  #opts: RefluxOptions;
 
-  constructor(private opts: RefluxOptions) {}
+  constructor(opts: RefluxOptions) {
+    this.#opts = opts;
+  }
 
   get middleware(): MiddlewareTransport {
-    return this.wrapped;
+    return this.#wrapped;
   }
 
   async init() {
@@ -30,7 +33,7 @@ export default class RefluxTransport implements BareTransport {
       middleware = [],
       controlPort,
       ...innerOptions
-    } = this.opts;
+    } = this.#opts;
 
     console.debug('%cRF%c Initializing transport wrapper', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
 
@@ -38,14 +41,14 @@ export default class RefluxTransport implements BareTransport {
       const mod = await import(transportPath);
       const TransportClass = mod.default;
 
-      this.inner = new TransportClass(innerOptions);
+      this.#inner = new TransportClass(innerOptions);
 
-      if (typeof this.inner.init === 'function') {
-        await this.inner.init();
+      if (typeof this.#inner.init === 'function') {
+        await this.#inner.init();
       }
 
-      this.wrapped = new MiddlewareTransport(this.inner);
-      await this.wrapped.init();
+      this.#wrapped = new MiddlewareTransport(this.#inner);
+      await this.#wrapped.init();
 
       this.ready = true;
       console.debug('%cRF%c Transport ready', 'background: #0066cc; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold', '');
@@ -56,7 +59,7 @@ export default class RefluxTransport implements BareTransport {
   }
 
   async meta() {
-    return this.wrapped.meta?.();
+    return this.#wrapped.meta?.();
   }
 
   async request(
@@ -66,7 +69,7 @@ export default class RefluxTransport implements BareTransport {
     headers: BareHeaders,
     signal?: AbortSignal
   ): Promise<TransferrableResponse> {
-    return this.wrapped.request(remote, method, body, headers, signal);
+    return this.#wrapped.request(remote, method, body, headers, signal);
   }
 
   connect(
@@ -78,7 +81,7 @@ export default class RefluxTransport implements BareTransport {
     onclose: (code: number, reason: string) => void,
     onerror: (error: string) => void
   ): [(data: Blob | ArrayBuffer | string) => void, (code: number, reason: string) => void] {
-    return this.wrapped.connect(
+    return this.#wrapped.connect(
       url,
       protocols,
       requestHeaders,
